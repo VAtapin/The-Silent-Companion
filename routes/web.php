@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\AiAssistantController;
 use App\Http\Controllers\AssetController;
 use App\Http\Controllers\AuthController;
@@ -62,11 +63,15 @@ Route::middleware(['auth', 'active'])->prefix('workspace')->group(function () {
     Route::get('/documents', [DocumentController::class, 'index'])->name('documents.index');
     Route::get('/documents/{document}', [DocumentController::class, 'show'])->name('documents.show');
     Route::put('/documents/{document}', [DocumentController::class, 'update'])->name('documents.update');
+    Route::post('/documents/{document}/versions/{version}/restore', [DocumentController::class, 'restore'])->name('documents.versions.restore');
     Route::get('/documents/{document}/source', [DocumentController::class, 'source'])->name('documents.source');
 
     Route::get('/team', [TeamController::class, 'index'])->name('team.index');
     Route::post('/team', [TeamController::class, 'store'])->name('team.store');
     Route::put('/team/{user}', [TeamController::class, 'update'])->name('team.update');
+
+    Route::get('/activity', [ActivityLogController::class, 'index'])->name('activity.index');
+    Route::post('/activity/{activityLog}/restore', [ActivityLogController::class, 'restore'])->name('activity.restore');
 
     Route::get('/publications', [PublicationController::class, 'index'])->name('publications.index');
     Route::post('/publications', [PublicationController::class, 'store'])->name('publications.store');

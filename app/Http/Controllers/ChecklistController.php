@@ -53,8 +53,9 @@ class ChecklistController extends Controller
     public function updateItem(Request $request, ChecklistItem $item): RedirectResponse
     {
         $data = $request->validate(['title' => ['required', 'string', 'max:255'], 'description' => ['nullable', 'string'], 'comment' => ['nullable', 'string'], 'assignee_id' => ['nullable', 'exists:users,id'], 'due_date' => ['nullable', 'date']]);
+        $old = $item->only(array_keys($data));
         $item->update($data);
-        ActivityLogger::write('Изменение пункта чек-листа', $item, $item->title);
+        ActivityLogger::write('Изменение пункта чек-листа', $item, $item->title, $old, $data);
 
         return back()->with('success', 'Пункт обновлён.');
     }

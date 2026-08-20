@@ -34,8 +34,9 @@ class CatalogController extends Controller
         [$class, $title] = $this->meta($type);
         $record = $class::findOrFail($id);
         $data = $this->validated($request, $type);
+        $old = $record->only(array_keys($data));
         $record->update($data);
-        ActivityLogger::write('Изменение: '.$title, $record, $record->name);
+        ActivityLogger::write('Изменение: '.$title, $record, $record->name, $old, $data);
 
         return back()->with('success', 'Запись обновлена.');
     }

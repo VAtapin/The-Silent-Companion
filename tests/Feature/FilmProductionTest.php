@@ -3,12 +3,14 @@
 namespace Tests\Feature;
 
 use App\Models\Act;
+use App\Models\ActivityLog;
 use App\Models\AiRequest;
 use App\Models\Asset;
 use App\Models\Character;
 use App\Models\ChecklistItem;
 use App\Models\ChecklistSection;
 use App\Models\Document;
+use App\Models\DocumentVersion;
 use App\Models\Location;
 use App\Models\Project;
 use App\Models\Publication;
@@ -18,8 +20,10 @@ use App\Models\User;
 use App\Services\ChecklistProgressService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class FilmProductionTest extends TestCase
@@ -152,6 +156,57 @@ class FilmProductionTest extends TestCase
             ->assertSee('<strong>Жирный текст</strong>', false)
             ->assertSee('Редактировать сценарий')
             ->assertSee('Сохранить новую версию');
+    }
+
+    public function test_document_version_can_be_restored_without_losing_current_text(): void
+    {
+        [$user, $project] = $this->baseData();
+        $document = Document::create(['project_id' => $project->id, 'title' => 'Сценарий', 'type' => 'Сценарий', 'content' => 'Первая версия', 'version' => 1]);
+        $first = DocumentVersion::create(['document_id' => $document->id, 'user_id' => $user->id, 'version' => 1, 'content' => 'Первая версия']);
+        $this->actingAs($user)->put(route('documents.update', $document), ['title' => 'Сценарий', 'type' => 'Сценарий', 'content' => 'Вторая версия']);
+
+        $this->actingAs($user)->post(route('documents.versions.restore', [$document, $first]))->assertRedirect();
+
+        $this->assertSame(3, $document->fresh()->version);
+        $this->assertSame('Первая версия', $document->fresh()->content);
+        $this->assertDatabaseHas('document_versions', ['document_id' => $document->id, 'version' => 2, 'content' => 'Вторая версия']);
+        $this->assertDatabaseHas('document_versions', ['document_id' => $document->id, 'version' => 3, 'content' => 'Первая версия']);
+    }
+
+    public function test_logged_change_can_be_restored_and_restore_is_logged(): void
+    {
+        [$user, $project] = $this->baseData();
+        $act = Act::create(['project_id' => $project->id, 'number' => 1, 'title' => 'Старое название', 'sort_order' => 1, 'status' => 'Черновик']);
+
+        $this->actingAs($user)->put(route('structure.update', ['act', $act]), ['title' => 'Новое название', 'status' => 'В работе'])->assertRedirect();
+        $change = ActivityLog::where('subject_type', Act::class)->latest('id')->firstOrFail();
+
+        $this->actingAs($user)->post(route('activity.restore', $change))->assertRedirect();
+
+        $this->assertSame('Старое название', $act->fresh()->title);
+        $this->assertSame('Черновик', $act->fresh()->status);
+        $this->assertDatabaseHas('activity_logs', ['subject_type' => Act::class, 'subject_id' => $act->id, 'action' => 'Восстановление предыдущей версии']);
+    }
+
+    public function test_backup_verification_checks_manifest_hashes(): void
+    {
+        $root = storage_path('framework/testing/backups-'.Str::uuid());
+        $name = '2026-08-21_02-30-00';
+        $directory = $root.DIRECTORY_SEPARATOR.$name;
+        File::ensureDirectoryExists($directory);
+        File::put($directory.DIRECTORY_SEPARATOR.'database.sql.gz', 'database-backup');
+        File::put($directory.DIRECTORY_SEPARATOR.'storage.zip', 'storage-backup');
+        File::put($directory.DIRECTORY_SEPARATOR.'manifest.json', json_encode([
+            'database' => ['file' => 'database.sql.gz', 'sha256' => hash('sha256', 'database-backup')],
+            'storage' => ['file' => 'storage.zip', 'sha256' => hash('sha256', 'storage-backup')],
+        ]));
+        config(['backup.path' => $root]);
+
+        try {
+            $this->artisan('backup:verify', ['name' => $name])->assertSuccessful();
+        } finally {
+            File::deleteDirectory($root);
+        }
     }
 
     public function test_user_can_create_scenes_and_shots(): void

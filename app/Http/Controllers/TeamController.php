@@ -33,8 +33,10 @@ class TeamController extends Controller
         if (blank($data['password'] ?? null)) {
             unset($data['password']);
         }
+        $audited = collect($data)->except('password')->all();
+        $old = $user->only(array_keys($audited));
         $user->update($data);
-        ActivityLogger::write('Изменение участника', $user, $user->email);
+        ActivityLogger::write('Изменение участника', $user, $user->email, $old, $audited);
 
         return back()->with('success', 'Данные участника обновлены.');
     }

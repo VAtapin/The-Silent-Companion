@@ -52,9 +52,11 @@ class PublicationController extends Controller
         } elseif ($data['is_published']) {
             $data['unpublished_at'] = null;
         }
-        $publication->update(collect($data)->except('asset_ids')->all());
+        $changes = collect($data)->except('asset_ids')->all();
+        $old = $publication->only(array_keys($changes));
+        $publication->update($changes);
         $publication->assets()->sync($data['asset_ids'] ?? []);
-        ActivityLogger::write('Изменение публикации', $publication, $publication->title);
+        ActivityLogger::write('Изменение публикации', $publication, $publication->title, $old, $changes);
 
         return back()->with('success', 'Публикация обновлена.');
     }
@@ -89,7 +91,11 @@ class PublicationController extends Controller
 
             return in_array($scheme, ['http', 'https'], true) && filter_var($url, FILTER_VALIDATE_URL);
         })->map(fn ($url) => ['url' => $url])->values()->all();
-        PublicSiteSetting::updateOrCreate(['project_id' => $project->id], ['public_summary' => $data['public_summary'] ?? null, 'poster_asset_id' => $posterId, 'contact' => $data['contact'] ?? null, 'official_links' => $links]);
+        $settings = PublicSiteSetting::firstOrNew(['project_id' => $project->id]);
+        $changes = ['public_summary' => $data['public_summary'] ?? null, 'poster_asset_id' => $posterId, 'contact' => $data['contact'] ?? null, 'official_links' => $links];
+        $old = $settings->exists ? $settings->only(array_keys($changes)) : [];
+        $settings->fill($changes)->save();
+        ActivityLogger::write('Изменение публичной страницы', $settings, null, $old, $changes);
 
         return back()->with('success', 'Публичная страница обновлена.');
     }
@@ -99,8 +105,10 @@ class PublicationController extends Controller
         $project = Project::firstOrFail();
         $data = $request->validate(['title' => ['required', 'string', 'max:255'], 'goal_description' => ['nullable', 'string'], 'bank_details' => ['nullable', 'string'], 'payment_url' => ['nullable', 'url'], 'additional_methods' => ['nullable', 'string'], 'contact' => ['nullable', 'string'], 'image_asset_id' => ['nullable', 'exists:assets,id'], 'qr_asset_id' => ['nullable', 'exists:assets,id'], 'is_visible' => ['nullable', 'boolean']]);
         $data['is_visible'] = $request->boolean('is_visible');
-        DonationSetting::updateOrCreate(['project_id' => $project->id], $data);
-        ActivityLogger::write('Изменение настроек пожертвований', null);
+        $settings = DonationSetting::firstOrNew(['project_id' => $project->id]);
+        $old = $settings->exists ? $settings->only(array_keys($data)) : [];
+        $settings->fill($data)->save();
+        ActivityLogger::write('Изменение настроек пожертвований', $settings, null, $old, $data);
 
         return back()->with('success', 'Настройки поддержки обновлены.');
     }

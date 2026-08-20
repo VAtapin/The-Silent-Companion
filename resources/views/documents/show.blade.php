@@ -56,6 +56,12 @@
                             <b>Версия {{ $version->version }}</b>
                             <p class="mt-1 text-xs text-slate-500">{{ $version->change_note ?: 'Первоначальный импорт' }}</p>
                             <p class="mt-1 text-xs text-slate-400">{{ $version->created_at->format('d.m.Y H:i') }}</p>
+                            @if($version->version !== $document->version)
+                                <form class="mt-2" method="POST" action="{{ route('documents.versions.restore', [$document, $version]) }}" onsubmit="return confirm('Восстановить эту версию? Текущий текст не пропадёт и останется в истории.');">
+                                    @csrf
+                                    <button class="text-xs font-medium text-amber-700">Восстановить эту версию</button>
+                                </form>
+                            @endif
                         </div>
                     @empty
                         <p class="muted">Предыдущих версий пока нет.</p>

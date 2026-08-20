@@ -44,4 +44,25 @@ class DocumentController extends Controller
 
         return response()->download($path, $document->source_name);
     }
+
+    public function restore(Request $request, Document $document, DocumentVersion $version): RedirectResponse
+    {
+        abort_unless($version->document_id === $document->id, 404);
+
+        $old = ['content' => $document->content, 'version' => $document->version];
+        $document->version++;
+        $document->content = $version->content;
+        $document->updated_by = $request->user()->id;
+        $document->save();
+        DocumentVersion::create([
+            'document_id' => $document->id,
+            'user_id' => $request->user()->id,
+            'version' => $document->version,
+            'content' => $document->content,
+            'change_note' => "Восстановлено из версии {$version->version}",
+        ]);
+        ActivityLogger::write('Восстановление документа', $document, "Версия {$version->version} восстановлена как новая версия {$document->version}", $old, ['content' => $document->content, 'version' => $document->version]);
+
+        return back()->with('success', "Версия {$version->version} восстановлена и сохранена как новая версия {$document->version}.");
+    }
 }
