@@ -134,6 +134,25 @@ class FilmProductionTest extends TestCase
         $this->assertDatabaseHas('document_versions', ['document_id' => $document->id, 'version' => 2, 'content' => 'Версия два']);
     }
 
+    public function test_document_page_renders_markdown_and_offers_editing(): void
+    {
+        [$user, $project] = $this->baseData();
+        $document = Document::create([
+            'project_id' => $project->id,
+            'title' => 'Сценарий',
+            'type' => 'Сценарий',
+            'content' => "# Заголовок\n\n**Жирный текст**",
+            'version' => 1,
+        ]);
+
+        $this->actingAs($user)->get(route('documents.show', $document))
+            ->assertOk()
+            ->assertSee('<h1>Заголовок</h1>', false)
+            ->assertSee('<strong>Жирный текст</strong>', false)
+            ->assertSee('Редактировать сценарий')
+            ->assertSee('Сохранить новую версию');
+    }
+
     public function test_user_can_create_scenes_and_shots(): void
     {
         [$user, $project] = $this->baseData();

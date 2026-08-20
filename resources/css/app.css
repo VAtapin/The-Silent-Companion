@@ -36,5 +36,17 @@
     .nav-link-active { @apply bg-white/12 text-white; }
     .field-grid { @apply grid gap-4 md:grid-cols-2; }
     .muted { @apply text-sm text-slate-500; }
-    .prose-film { @apply whitespace-pre-wrap text-[15px] leading-7 text-slate-700; }
+    .screenplay-paper { @apply px-6 py-8 sm:px-10 lg:px-14; }
+    .prose-film { @apply mx-auto max-w-4xl text-[15px] leading-7 text-slate-700; }
+    .prose-film h1 { @apply mb-3 mt-10 text-3xl font-semibold tracking-tight text-ink-950 first:mt-0; }
+    .prose-film h2 { @apply mb-3 mt-10 border-b border-mist-200 pb-2 text-xl font-semibold text-ink-950; }
+    .prose-film h3 { @apply mb-2 mt-7 text-lg font-semibold text-ink-900; }
+    .prose-film p { @apply my-4; }
+    .prose-film strong { @apply font-semibold text-ink-950; }
+    .prose-film em { @apply text-slate-600; }
+    .prose-film hr { @apply my-9 border-0 border-t border-mist-200; }
+    .prose-film ul { @apply my-4 list-disc space-y-1 pl-6; }
+    .prose-film ol { @apply my-4 list-decimal space-y-1 pl-6; }
+    .prose-film blockquote { @apply my-5 border-l-4 border-amber-400 bg-mist-50 px-5 py-2 italic text-slate-600; }
+    .prose-film code { @apply rounded bg-mist-100 px-1.5 py-0.5 text-sm text-ink-900; }
 }
