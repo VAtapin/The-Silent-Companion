@@ -156,5 +156,7 @@ class FilmProjectSeeder extends Seeder
         foreach (['proofread' => 'Исправь орфографические, пунктуационные и грамматические ошибки, не меняя смысл.', 'improve' => 'Улучши ясность и ритм текста, сохрани авторский голос.', 'shorten' => 'Сократи текст без потери ключевой драматургической информации.', 'cinematic' => 'Сделай текст кинематографичнее в эстетике slow cinema.', 'contradictions' => 'Найди внутренние и производственные противоречия, перечисли их конкретно.'] as $action => $instructions) {
             AiPromptTemplate::create(['name' => $action, 'action' => $action, 'instructions' => $instructions]);
         }
+
+        $this->call(ScreenplayV1Seeder::class);
     }
 }
