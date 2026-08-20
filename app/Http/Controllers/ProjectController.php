@@ -34,6 +34,7 @@ class ProjectController extends Controller
             'visual_principle' => ['nullable', 'string'], 'sound_principle' => ['nullable', 'string'],
             'color_palette' => ['nullable', 'string'], 'camera_rules' => ['nullable', 'string'],
             'production_stage' => ['required', 'string', 'max:100'],
+            'firefly_board_url' => ['nullable', 'url', 'max:2048'],
         ]);
         $old = $project->only(array_keys($data));
         $project->fill($data);
