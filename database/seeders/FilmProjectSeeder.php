@@ -25,13 +25,24 @@ class FilmProjectSeeder extends Seeder
 {
     public function run(): void
     {
-        $password = env('FIRST_USER_PASSWORD');
-        if (blank($password)) {
-            throw new RuntimeException('Укажите FIRST_USER_PASSWORD в .env перед запуском сидера.');
+        if (Project::query()->exists()) {
+            $this->command?->warn('Карточка проекта уже существует. Первоначальное заполнение пропущено.');
+
+            return;
         }
-        $user = User::updateOrCreate(['email' => env('FIRST_USER_EMAIL', 'producer@example.com')], [
-            'name' => env('FIRST_USER_NAME', 'Продюсер проекта'), 'password' => Hash::make($password), 'is_active' => true,
-        ]);
+
+        $user = User::query()->where('is_active', true)->oldest()->first();
+
+        if ($user === null) {
+            $password = env('FIRST_USER_PASSWORD');
+            if (blank($password)) {
+                throw new RuntimeException('Активный пользователь не найден. Укажите FIRST_USER_PASSWORD в .env или выполните php artisan user:create.');
+            }
+
+            $user = User::updateOrCreate(['email' => env('FIRST_USER_EMAIL', 'producer@example.com')], [
+                'name' => env('FIRST_USER_NAME', 'Продюсер проекта'), 'password' => Hash::make($password), 'is_active' => true,
+            ]);
+        }
 
         $project = Project::create([
             'title_ru' => 'Тихий спутник', 'title_en' => 'The Silent Companion',
