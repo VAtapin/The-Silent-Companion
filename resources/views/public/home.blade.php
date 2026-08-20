@@ -18,10 +18,10 @@
     <section class="relative min-h-[88vh] overflow-hidden">
         <div class="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,#34423e_0%,#17201e_42%,#111716_75%)]"></div>
         @if($settings?->poster_asset_id)
-            <img src="{{ route('public.media', $settings->poster_asset_id) }}" alt="Афиша фильма" class="absolute inset-0 h-full w-full object-cover opacity-55">
-            <div class="absolute inset-0 bg-gradient-to-r from-ink-950 via-ink-950/75 to-transparent"></div>
+            <img src="{{ route('public.media', $settings->poster_asset_id) }}" alt="" aria-hidden="true" class="absolute inset-0 h-full w-full scale-110 object-cover opacity-20 blur-xl">
+            <div class="absolute inset-0 bg-gradient-to-r from-ink-950 via-ink-950/85 to-ink-950/45"></div>
         @endif
-        <div class="relative mx-auto flex min-h-[88vh] max-w-7xl items-end px-5 pb-20 pt-32 md:items-center md:pb-0">
+        <div class="relative mx-auto grid min-h-[88vh] max-w-7xl items-center gap-12 px-5 pb-16 pt-28 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,25rem)] lg:py-28">
             <div class="max-w-3xl">
                 <p class="text-xs uppercase tracking-[.34em] text-amber-400">Короткометражный фильм</p>
                 <h1 class="mt-5 text-5xl font-semibold text-white md:text-7xl">{{ $project?->title_ru ?? 'Тихий спутник' }}</h1>
@@ -29,6 +29,11 @@
                 <p class="mt-8 max-w-2xl text-xl leading-8 text-mist-100">{{ $project?->tagline }}</p>
                 <p class="mt-5 max-w-2xl leading-7 text-mist-200/80">{{ $settings?->public_summary ?: $project?->logline }}</p>
             </div>
+            @if($settings?->poster_asset_id)
+                <figure class="mx-auto w-full max-w-sm overflow-hidden rounded-[1.75rem] border border-white/15 bg-black shadow-2xl shadow-black/50">
+                    <img src="{{ route('public.media', $settings->poster_asset_id) }}" alt="Афиша фильма «{{ $project?->title_ru ?? 'Тихий спутник' }}»" class="aspect-[2/3] h-auto w-full object-cover">
+                </figure>
+            @endif
         </div>
     </section>
 

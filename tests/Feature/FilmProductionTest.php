@@ -12,6 +12,7 @@ use App\Models\Document;
 use App\Models\Location;
 use App\Models\Project;
 use App\Models\Publication;
+use App\Models\PublicSiteSetting;
 use App\Models\Scene;
 use App\Models\User;
 use App\Services\ChecklistProgressService;
@@ -263,6 +264,22 @@ class FilmProductionTest extends TestCase
         auth()->logout();
         $this->put(route('publications.donations'), ['title' => 'Поддержка'])->assertRedirect('/login');
         $this->assertDatabaseMissing('donation_settings', ['project_id' => $project->id]);
+    }
+
+    public function test_poster_can_be_uploaded_directly_from_public_site_settings(): void
+    {
+        Storage::fake('local');
+        [$user, $project] = $this->baseData();
+
+        $this->actingAs($user)->put(route('publications.site'), [
+            'public_summary' => 'Описание фильма',
+            'poster_file' => UploadedFile::fake()->image('poster.jpg', 1200, 1800),
+        ])->assertRedirect();
+
+        $poster = Asset::where('title', 'Афиша фильма «Тихий спутник»')->firstOrFail();
+        $this->assertSame('Утверждено', $poster->status);
+        $this->assertSame($poster->id, PublicSiteSetting::where('project_id', $project->id)->value('poster_asset_id'));
+        Storage::disk('local')->assertExists($poster->file_path);
     }
 
     public function test_public_home_does_not_disclose_internal_project_data(): void

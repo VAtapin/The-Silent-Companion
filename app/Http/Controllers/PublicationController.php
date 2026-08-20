@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Models\Publication;
 use App\Models\PublicSiteSetting;
 use App\Services\ActivityLogger;
+use App\Services\AssetStorageService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -15,6 +16,8 @@ use Illuminate\View\View;
 
 class PublicationController extends Controller
 {
+    public function __construct(private readonly AssetStorageService $storage) {}
+
     public function index(): View
     {
         $project = Project::firstOrFail();
@@ -59,13 +62,34 @@ class PublicationController extends Controller
     public function updateSite(Request $request): RedirectResponse
     {
         $project = Project::firstOrFail();
-        $data = $request->validate(['public_summary' => ['nullable', 'string'], 'poster_asset_id' => ['nullable', 'exists:assets,id'], 'contact' => ['nullable', 'string', 'max:255'], 'official_links_text' => ['nullable', 'string']]);
+        $max = min(config('production.max_upload_kb'), 25600);
+        $data = $request->validate([
+            'public_summary' => ['nullable', 'string'],
+            'poster_asset_id' => ['nullable', 'exists:assets,id'],
+            'poster_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', "max:$max"],
+            'contact' => ['nullable', 'string', 'max:255'],
+            'official_links_text' => ['nullable', 'string'],
+        ]);
+        $posterId = $data['poster_asset_id'] ?? null;
+        if ($request->hasFile('poster_file')) {
+            $poster = Asset::create(array_merge($this->storage->store($request->file('poster_file')), [
+                'uploaded_by' => $request->user()->id,
+                'title' => 'Афиша фильма «Тихий спутник»',
+                'description' => 'Основная афиша публичной страницы фильма.',
+                'type' => 'Фото',
+                'status' => 'Утверждено',
+                'has_usage_permission' => true,
+                'source' => 'Загружено через оформление публичной страницы',
+            ]));
+            $posterId = $poster->id;
+            ActivityLogger::write('Загрузка афиши', $poster, $poster->title);
+        }
         $links = collect(preg_split('/\r\n|\r|\n/', $data['official_links_text'] ?? ''))->map(fn ($line) => trim($line))->filter(function ($url) {
             $scheme = parse_url($url, PHP_URL_SCHEME);
 
             return in_array($scheme, ['http', 'https'], true) && filter_var($url, FILTER_VALIDATE_URL);
         })->map(fn ($url) => ['url' => $url])->values()->all();
-        PublicSiteSetting::updateOrCreate(['project_id' => $project->id], ['public_summary' => $data['public_summary'] ?? null, 'poster_asset_id' => $data['poster_asset_id'] ?? null, 'contact' => $data['contact'] ?? null, 'official_links' => $links]);
+        PublicSiteSetting::updateOrCreate(['project_id' => $project->id], ['public_summary' => $data['public_summary'] ?? null, 'poster_asset_id' => $posterId, 'contact' => $data['contact'] ?? null, 'official_links' => $links]);
 
         return back()->with('success', 'Публичная страница обновлена.');
     }
