@@ -21,9 +21,23 @@ class PublicController extends Controller
         return view('public.home', ['project' => $project, 'settings' => PublicSiteSetting::with('poster')->first(), 'donations' => DonationSetting::where('is_visible', true)->first(), 'publications' => Publication::visible()->with('assets')->orderBy('sort_order')->orderByDesc('published_at')->get()]);
     }
 
+    public function publication(Publication $publication): View
+    {
+        abort_unless(Publication::visible()->whereKey($publication)->exists(), 404);
+        $publication->load('assets');
+
+        return view('public.publication', [
+            'publication' => $publication,
+            'project' => Project::first(),
+            'settings' => PublicSiteSetting::with('poster')->first(),
+        ]);
+    }
+
     public function sitemap(): Response
     {
-        return response()->view('public.sitemap')->header('Content-Type', 'application/xml; charset=UTF-8');
+        return response()->view('public.sitemap', [
+            'publications' => Publication::visible()->orderByDesc('published_at')->get(),
+        ])->header('Content-Type', 'application/xml; charset=UTF-8');
     }
 
     public function media(Asset $asset): StreamedResponse

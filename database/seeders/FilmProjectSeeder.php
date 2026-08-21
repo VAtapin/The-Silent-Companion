@@ -45,9 +45,13 @@ class FilmProjectSeeder extends Seeder
         }
 
         $project = Project::create([
-            'title_ru' => 'Тихий спутник', 'title_en' => 'The Silent Companion',
+            'title_ru' => 'Тихий спутник', 'title_en' => 'The Silent Companion', 'title_de' => 'Der stille Begleiter',
             'tagline' => 'История о том, как нас спасают те, кто не умеет говорить.',
+            'tagline_en' => 'A story about how those who cannot speak can save us.',
+            'tagline_de' => 'Eine Geschichte darüber, wie uns jene retten, die nicht sprechen können.',
             'logline' => 'После тяжёлой потери мужчина замолкает и отгораживается от мира. Только старый чёрный лабрадор ежедневно вытаскивает его из пустого дома, а перед своим уходом помогает хозяину вновь найти связь с людьми и передаёт его новому маленькому спутнику.',
+            'logline_en' => 'After a devastating loss, a man falls silent and withdraws from the world. Only his old black Labrador draws him out of the empty house each day and, before leaving, helps him reconnect with people and entrusts him to a new little companion.',
+            'logline_de' => 'Nach einem schweren Verlust verstummt ein Mann und zieht sich von der Welt zurück. Nur sein alter schwarzer Labrador holt ihn jeden Tag aus dem leeren Haus und hilft ihm vor seinem Abschied, wieder zu den Menschen zu finden und einen neuen kleinen Begleiter anzunehmen.',
             'synopsis' => 'Мужчина около 48 лет после тяжёлой потери живёт механическим ритуалом и почти не разговаривает. Его старый девятилетний чёрный лабрадор каждый день выводит хозяина из пустого дома. Когда пёс впервые нарушает привычный маршрут и приводит его к старухе, подкармливающей бездомных собак, герой понимает: все эти годы не он спасал собаку, а собака удерживала его в жизни. В последние дни он меняет маршрут, благодарит верного спутника и постепенно возвращается к речи и людям. После ухода лабрадора герой выходит с пустым поводком и встречает у последнего фонаря чёрного щенка — нового спутника, которому тоже нужен ритуал.',
             'genre' => 'Тихая психологическая драма, slow cinema', 'duration' => '25–30 минут (основа — концепция 97 минут)',
             'aspect_ratio' => '1.85:1', 'frame_rate' => 24, 'resolution' => '4K', 'language' => 'Русский', 'production_stage' => 'Подготовка',
@@ -151,7 +155,7 @@ class FilmProjectSeeder extends Seeder
             $document->versions()->create(['user_id' => $user->id, 'version' => 1, 'content' => $content, 'change_note' => 'Первоначальный импорт из DOC']);
         }
 
-        PublicSiteSetting::create(['project_id' => $project->id, 'public_summary' => 'Тихая психологическая драма о человеке и старом лабрадоре, который возвращает хозяина к людям и передаёт ему новый ритуал жизни.']);
+        PublicSiteSetting::create(['project_id' => $project->id, 'public_summary' => 'Тихая психологическая драма о человеке и старом лабрадоре, который возвращает хозяина к людям и передаёт ему новый ритуал жизни.', 'public_summary_en' => 'A quiet psychological drama about a man and an old Labrador who leads his owner back to people and gives him a new ritual for living.', 'public_summary_de' => 'Ein stilles psychologisches Drama über einen Mann und einen alten Labrador, der seinen Menschen zu den Menschen zurückführt und ihm ein neues Lebensritual schenkt.']);
         DonationSetting::create(['project_id' => $project->id, 'title' => 'Поддержать создание фильма', 'goal_description' => 'Реквизиты и способы поддержки появятся здесь только после отдельного утверждения командой.', 'is_visible' => false]);
         foreach (['proofread' => 'Исправь орфографические, пунктуационные и грамматические ошибки, не меняя смысл.', 'improve' => 'Улучши ясность и ритм текста, сохрани авторский голос.', 'shorten' => 'Сократи текст без потери ключевой драматургической информации.', 'cinematic' => 'Сделай текст кинематографичнее в эстетике slow cinema.', 'contradictions' => 'Найди внутренние и производственные противоречия, перечисли их конкретно.'] as $action => $instructions) {
             AiPromptTemplate::create(['name' => $action, 'action' => $action, 'instructions' => $instructions]);

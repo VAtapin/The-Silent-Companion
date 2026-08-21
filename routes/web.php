@@ -9,6 +9,7 @@ use App\Http\Controllers\ChecklistController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\FilmStructureController;
+use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\PublicationController;
 use App\Http\Controllers\PublicController;
@@ -16,16 +17,28 @@ use App\Http\Controllers\TeamController;
 use App\Models\Asset;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', [PublicController::class, 'home'])->name('public.home');
+Route::middleware('locale:ru')->group(function () {
+    Route::get('/', [PublicController::class, 'home'])->name('public.home');
+    Route::get('/materials/{publication}', [PublicController::class, 'publication'])->name('public.publications.show');
+});
+Route::prefix('en')->middleware('locale:en')->group(function () {
+    Route::get('/', [PublicController::class, 'home'])->name('public.home.en');
+    Route::get('/materials/{publication}', [PublicController::class, 'publication'])->name('public.publications.show.en');
+});
+Route::prefix('de')->middleware('locale:de')->group(function () {
+    Route::get('/', [PublicController::class, 'home'])->name('public.home.de');
+    Route::get('/materials/{publication}', [PublicController::class, 'publication'])->name('public.publications.show.de');
+});
 Route::get('/sitemap.xml', [PublicController::class, 'sitemap'])->name('public.sitemap');
 Route::get('/media/{asset}', [PublicController::class, 'media'])->name('public.media');
+Route::get('/locale/{locale}', LocaleController::class)->name('locale.switch');
 
-Route::middleware('guest')->group(function () {
+Route::middleware(['guest', 'locale'])->group(function () {
     Route::get('/login', [AuthController::class, 'create'])->name('login');
     Route::post('/login', [AuthController::class, 'store'])->name('login.store');
 });
 
-Route::middleware(['auth', 'active'])->prefix('workspace')->group(function () {
+Route::middleware(['auth', 'active', 'locale'])->prefix('workspace')->group(function () {
     Route::get('/', DashboardController::class)->name('dashboard');
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
 

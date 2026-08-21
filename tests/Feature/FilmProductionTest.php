@@ -405,7 +405,43 @@ class FilmProductionTest extends TestCase
         $asset = Asset::where('external_url', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ')->firstOrFail();
         $this->assertSame('dQw4w9WgXcQ', $asset->youtubeId());
         $this->assertTrue(Publication::firstOrFail()->assets->contains($asset));
-        $this->get(route('public.home'))->assertOk()->assertSee('youtube-nocookie.com/embed/dQw4w9WgXcQ', false);
+        $publication = Publication::firstOrFail();
+        $this->get(route('public.home'))->assertOk()
+            ->assertSee('i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg', false)
+            ->assertDontSee('youtube-nocookie.com/embed/dQw4w9WgXcQ', false)
+            ->assertSee(route('public.publications.show', $publication), false);
+        $this->get(route('public.publications.show', $publication))->assertOk()
+            ->assertSee('youtube-nocookie.com/embed/dQw4w9WgXcQ', false);
+    }
+
+    public function test_home_shows_only_teaser_and_full_text_is_on_publication_page(): void
+    {
+        [$user] = $this->baseData();
+        $longText = str_repeat('Полный текст материала, который не должен целиком помещаться на главной странице. ', 8);
+        $publication = Publication::create(['author_id' => $user->id, 'title' => 'История фильма', 'description' => $longText, 'type' => 'Новость', 'status' => 'Опубликовано', 'is_published' => true, 'published_at' => now()]);
+
+        $this->get(route('public.home'))->assertOk()->assertSee('Читать далее')->assertDontSee($longText);
+        $this->get(route('public.publications.show', $publication))->assertOk()->assertSee($longText);
+    }
+
+    public function test_public_site_has_russian_english_and_german_routes_with_localized_content(): void
+    {
+        [$user, $project] = $this->baseData();
+        $project->update(['title_en' => 'The Silent Companion', 'title_de' => 'Der stille Begleiter', 'tagline_en' => 'An English tagline', 'tagline_de' => 'Ein deutscher Slogan']);
+        $publication = Publication::create(['author_id' => $user->id, 'title' => 'Русский заголовок', 'title_en' => 'English title', 'title_de' => 'Deutscher Titel', 'description' => 'Русский текст', 'description_en' => 'English text', 'description_de' => 'Deutscher Text', 'type' => 'Новость', 'status' => 'Опубликовано', 'is_published' => true, 'published_at' => now()]);
+
+        $this->get('/')->assertOk()->assertSee('<html lang="ru">', false)->assertSee('Русский заголовок');
+        $this->get('/en')->assertOk()->assertSee('<html lang="en">', false)->assertSee('The Silent Companion')->assertSee('English title')->assertSee('Read more');
+        $this->get('/de')->assertOk()->assertSee('<html lang="de">', false)->assertSee('Der stille Begleiter')->assertSee('Deutscher Titel')->assertSee('Weiterlesen');
+        $this->get(route('public.publications.show.en', $publication))->assertOk()->assertSee('English text');
+        $this->get(route('public.publications.show.de', $publication))->assertOk()->assertSee('Deutscher Text');
+    }
+
+    public function test_workspace_language_switch_is_saved_in_session(): void
+    {
+        [$user] = $this->baseData();
+        $this->actingAs($user)->from(route('dashboard'))->get(route('locale.switch', 'de'))->assertRedirect(route('dashboard'));
+        $this->actingAs($user)->withSession(['locale' => 'de'])->get(route('dashboard'))->assertOk()->assertSee('Änderungsverlauf');
     }
 
     public function test_photo_can_be_uploaded_directly_with_publication(): void

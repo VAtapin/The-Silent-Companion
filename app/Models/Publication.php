@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasLocalizedContent;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Publication extends Model
 {
+    use HasLocalizedContent;
+
     public const STATUSES = ['Черновик', 'На проверке', 'Опубликовано', 'Скрыто', 'Архив'];
 
     protected $guarded = [];

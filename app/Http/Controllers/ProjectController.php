@@ -27,7 +27,9 @@ class ProjectController extends Controller
         $data = $request->validate([
             'title_ru' => ['required', 'string', 'max:255'],
             'title_en' => ['nullable', 'string', 'max:255'],
-            'tagline' => ['nullable', 'string'], 'logline' => ['nullable', 'string'], 'synopsis' => ['nullable', 'string'],
+            'title_de' => ['nullable', 'string', 'max:255'],
+            'tagline' => ['nullable', 'string'], 'tagline_en' => ['nullable', 'string'], 'tagline_de' => ['nullable', 'string'],
+            'logline' => ['nullable', 'string'], 'logline_en' => ['nullable', 'string'], 'logline_de' => ['nullable', 'string'], 'synopsis' => ['nullable', 'string'],
             'genre' => ['nullable', 'string', 'max:255'], 'duration' => ['nullable', 'string', 'max:255'],
             'aspect_ratio' => ['nullable', 'string', 'max:30'], 'frame_rate' => ['nullable', 'integer', 'min:1', 'max:240'],
             'resolution' => ['nullable', 'string', 'max:50'], 'language' => ['required', 'string', 'max:100'],

@@ -88,6 +88,8 @@ class PublicationController extends Controller
         $project = Project::firstOrFail();
         $data = $request->validate([
             'public_summary' => ['nullable', 'string'],
+            'public_summary_en' => ['nullable', 'string'],
+            'public_summary_de' => ['nullable', 'string'],
             'poster_asset_id' => ['nullable', 'exists:assets,id'],
             'contact' => ['nullable', 'string', 'max:255'],
             'official_links_text' => ['nullable', 'string'],
@@ -99,7 +101,7 @@ class PublicationController extends Controller
             return in_array($scheme, ['http', 'https'], true) && filter_var($url, FILTER_VALIDATE_URL);
         })->map(fn ($url) => ['url' => $url])->values()->all();
         $settings = PublicSiteSetting::firstOrNew(['project_id' => $project->id]);
-        $changes = ['public_summary' => $data['public_summary'] ?? null, 'poster_asset_id' => $posterId, 'contact' => $data['contact'] ?? null, 'official_links' => $links];
+        $changes = ['public_summary' => $data['public_summary'] ?? null, 'public_summary_en' => $data['public_summary_en'] ?? null, 'public_summary_de' => $data['public_summary_de'] ?? null, 'poster_asset_id' => $posterId, 'contact' => $data['contact'] ?? null, 'official_links' => $links];
         $old = $settings->exists ? $settings->only(array_keys($changes)) : [];
         $settings->fill($changes)->save();
         ActivityLogger::write('Изменение публичной страницы', $settings, null, $old, $changes);
@@ -141,7 +143,7 @@ class PublicationController extends Controller
     public function updateDonation(Request $request): RedirectResponse
     {
         $project = Project::firstOrFail();
-        $data = $request->validate(['title' => ['required', 'string', 'max:255'], 'goal_description' => ['nullable', 'string'], 'bank_details' => ['nullable', 'string'], 'payment_url' => ['nullable', 'url'], 'additional_methods' => ['nullable', 'string'], 'contact' => ['nullable', 'string'], 'image_asset_id' => ['nullable', 'exists:assets,id'], 'qr_asset_id' => ['nullable', 'exists:assets,id'], 'is_visible' => ['nullable', 'boolean']]);
+        $data = $request->validate(['title' => ['required', 'string', 'max:255'], 'title_en' => ['nullable', 'string', 'max:255'], 'title_de' => ['nullable', 'string', 'max:255'], 'goal_description' => ['nullable', 'string'], 'goal_description_en' => ['nullable', 'string'], 'goal_description_de' => ['nullable', 'string'], 'bank_details' => ['nullable', 'string'], 'payment_url' => ['nullable', 'url'], 'additional_methods' => ['nullable', 'string'], 'additional_methods_en' => ['nullable', 'string'], 'additional_methods_de' => ['nullable', 'string'], 'contact' => ['nullable', 'string'], 'image_asset_id' => ['nullable', 'exists:assets,id'], 'qr_asset_id' => ['nullable', 'exists:assets,id'], 'is_visible' => ['nullable', 'boolean']]);
         $data['is_visible'] = $request->boolean('is_visible');
         $settings = DonationSetting::firstOrNew(['project_id' => $project->id]);
         $old = $settings->exists ? $settings->only(array_keys($data)) : [];
@@ -156,7 +158,8 @@ class PublicationController extends Controller
         $maxKb = max(1, (int) floor(min(UploadedFile::getMaxFilesize(), config('production.max_upload_kb') * 1024) / 1024));
 
         return $request->validate([
-            'title' => ['required', 'string', 'max:255'], 'description' => ['nullable', 'string'], 'type' => ['required', 'string', 'max:100'],
+            'title' => ['required', 'string', 'max:255'], 'title_en' => ['nullable', 'string', 'max:255'], 'title_de' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string'], 'description_en' => ['nullable', 'string'], 'description_de' => ['nullable', 'string'], 'type' => ['required', 'string', 'max:100'],
             'published_at' => ['nullable', 'date'], 'sort_order' => ['nullable', 'integer', 'min:0'], 'status' => ['required', Rule::in(Publication::STATUSES)],
             'is_published' => ['nullable', 'boolean'], 'publish_action' => ['nullable', Rule::in(['publish', 'draft'])],
             'asset_ids' => ['array'], 'asset_ids.*' => ['exists:assets,id'],

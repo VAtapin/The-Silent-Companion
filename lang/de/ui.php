@@ -1,0 +1,26 @@
+<?php
+
+return [
+    'film' => 'Der stille Begleiter',
+    'production' => 'Filmproduktion',
+    'short_film' => 'Kurzfilm',
+    'team_login' => 'Team-Login',
+    'menu' => 'Menü',
+    'logout' => 'Abmelden',
+    'check_data' => 'Bitte Eingaben prüfen:',
+    'journal' => 'Aus dem Filmtagebuch',
+    'published_materials' => 'Veröffentlichte Beiträge',
+    'read_more' => 'Weiterlesen',
+    'back_to_home' => 'Zurück zur Startseite',
+    'published' => 'Veröffentlicht',
+    'support_label' => 'Projekt unterstützen',
+    'support' => 'Film unterstützen',
+    'official_page' => 'Offizielle Seite',
+    'nav' => ['dashboard' => 'Übersicht', 'project' => 'Über das Projekt', 'structure' => 'Akte, Szenen und Einstellungen', 'checklist' => 'Checkliste', 'assets' => 'Materialien', 'characters' => 'Figuren', 'locations' => 'Drehorte', 'props' => 'Requisiten und Kostüme', 'documents' => 'Dokumente', 'ai' => 'KI-Assistent', 'publications' => 'Veröffentlichungen', 'team' => 'Team', 'activity' => 'Änderungsverlauf'],
+    'auth' => ['closed' => 'Geschützter Teambereich', 'subtitle' => 'Organisation der Filmvorbereitung und -produktion', 'email' => 'E-Mail-Adresse', 'password' => 'Passwort', 'remember' => 'Angemeldet bleiben', 'login' => 'Anmelden', 'registration_disabled' => 'Die öffentliche Registrierung ist deaktiviert. Den Zugang vergibt ein Teammitglied.'],
+    'languages' => ['ru' => 'Русский', 'en' => 'English', 'de' => 'Deutsch'],
+    'fallback_description' => 'Offizielle Website des Kurzfilms „Der stille Begleiter“.',
+    'video' => 'Video',
+    'open_video' => 'Video öffnen',
+    'types' => ['Фото' => 'Foto', 'Видео' => 'Video', 'Новость' => 'Neuigkeit', 'Афиша' => 'Plakat'],
+];

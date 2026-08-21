@@ -1,0 +1,26 @@
+<?php
+
+return [
+    'film' => 'The Silent Companion',
+    'production' => 'Film production',
+    'short_film' => 'Short film',
+    'team_login' => 'Team login',
+    'menu' => 'Menu',
+    'logout' => 'Log out',
+    'check_data' => 'Please check the data:',
+    'journal' => 'From the film journal',
+    'published_materials' => 'Published materials',
+    'read_more' => 'Read more',
+    'back_to_home' => 'Back to homepage',
+    'published' => 'Published',
+    'support_label' => 'Support the project',
+    'support' => 'Support the film',
+    'official_page' => 'Official page',
+    'nav' => ['dashboard' => 'Overview', 'project' => 'About the project', 'structure' => 'Acts, scenes and shots', 'checklist' => 'Checklist', 'assets' => 'Materials', 'characters' => 'Characters', 'locations' => 'Locations', 'props' => 'Props and wardrobe', 'documents' => 'Documents', 'ai' => 'AI assistant', 'publications' => 'Publications', 'team' => 'Team', 'activity' => 'Change history'],
+    'auth' => ['closed' => 'Private team workspace', 'subtitle' => 'Film preparation and production management', 'email' => 'Email address', 'password' => 'Password', 'remember' => 'Remember me', 'login' => 'Log in', 'registration_disabled' => 'Public registration is disabled. Access is granted by a team member.'],
+    'languages' => ['ru' => 'Русский', 'en' => 'English', 'de' => 'Deutsch'],
+    'fallback_description' => 'Official website of the short film “The Silent Companion”.',
+    'video' => 'Video',
+    'open_video' => 'Open video',
+    'types' => ['Фото' => 'Photo', 'Видео' => 'Video', 'Новость' => 'News', 'Афиша' => 'Poster'],
+];
