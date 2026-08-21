@@ -18,6 +18,8 @@ use App\Services\AssetStorageService;
 use App\Services\ChecklistProgressService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -40,7 +42,11 @@ class AssetController extends Controller
             ->when($request->filled('category_id'), fn ($q) => $q->where('category_id', $request->category_id))
             ->latest()->paginate(18)->withQueryString();
 
-        return view('assets.index', ['assets' => $assets, 'categories' => AssetCategory::orderBy('name')->get()]);
+        return view('assets.index', [
+            'assets' => $assets,
+            'categories' => AssetCategory::orderBy('name')->get(),
+            'protectedAssetIds' => $this->siteProtectedAssetIds(),
+        ]);
     }
 
     public function create(): View
@@ -84,7 +90,10 @@ class AssetController extends Controller
     {
         $asset->load(['category', 'uploader', 'characters', 'locations', 'props', 'acts', 'scenes', 'shots', 'checklistItems.requirements']);
 
-        return view('assets.show', compact('asset'));
+        return view('assets.show', [
+            'asset' => $asset,
+            'deletionProtectionReason' => $this->deletionProtectionReason($asset),
+        ]);
     }
 
     public function edit(Asset $asset): View
@@ -121,11 +130,8 @@ class AssetController extends Controller
 
     public function destroy(Asset $asset): RedirectResponse
     {
-        if (PublicSiteSetting::where('poster_asset_id', $asset->id)->exists()) {
-            return back()->withErrors(['asset' => 'Этот материал установлен фоном главной страницы. Сначала выберите другую афишу.']);
-        }
-        if (DonationSetting::where('image_asset_id', $asset->id)->orWhere('qr_asset_id', $asset->id)->exists()) {
-            return back()->withErrors(['asset' => 'Этот материал используется в блоке пожертвований. Сначала замените его в настройках публикаций.']);
+        if ($reason = $this->deletionProtectionReason($asset)) {
+            return back()->withErrors(['asset' => $reason]);
         }
 
         $items = $asset->checklistItems()->get();
@@ -208,5 +214,33 @@ class AssetController extends Controller
             'locations' => Location::orderBy('name')->get(), 'props' => Prop::orderBy('name')->get(), 'acts' => Act::orderBy('number')->get(),
             'scenes' => Scene::orderBy('code')->get(), 'shots' => Shot::orderBy('code')->get(), 'checklistItems' => ChecklistItem::orderBy('title')->get(),
         ];
+    }
+
+    private function deletionProtectionReason(Asset $asset): ?string
+    {
+        if (in_array($asset->status, ['Утверждено', 'Используется в фильме', 'Финальная версия'], true)) {
+            return "Материал со статусом «{$asset->status}» защищён от удаления. Сначала измените его статус.";
+        }
+        if ($this->siteProtectedAssetIds()->contains($asset->id)) {
+            return 'Материал используется на публичном сайте. Сначала уберите его с сайта или замените другим материалом.';
+        }
+
+        return null;
+    }
+
+    private function siteProtectedAssetIds(): Collection
+    {
+        $publicationAssetIds = DB::table('publication_assets')
+            ->join('publications', 'publications.id', '=', 'publication_assets.publication_id')
+            ->where('publications.is_published', true)
+            ->where('publications.status', 'Опубликовано')
+            ->whereNull('publications.unpublished_at')
+            ->pluck('publication_assets.asset_id');
+
+        return $publicationAssetIds
+            ->merge(PublicSiteSetting::pluck('poster_asset_id'))
+            ->merge(DonationSetting::pluck('image_asset_id'))
+            ->merge(DonationSetting::pluck('qr_asset_id'))
+            ->filter()->map(fn ($id) => (int) $id)->unique()->values();
     }
 }

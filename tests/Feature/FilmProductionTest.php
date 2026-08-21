@@ -699,10 +699,22 @@ class FilmProductionTest extends TestCase
         $this->assertSoftDeleted('assets', ['id' => $asset->id]);
         $this->assertSame('assets/source.jpg', Asset::withTrashed()->findOrFail($asset->id)->file_path);
 
-        $poster = Asset::create(['uploaded_by' => $user->id, 'title' => 'Главная афиша', 'type' => 'Фото', 'status' => 'Утверждено']);
+        $approved = Asset::create(['uploaded_by' => $user->id, 'title' => 'Утверждённый материал', 'type' => 'Фото', 'status' => 'Утверждено']);
+        $this->delete(route('assets.destroy', $approved))->assertSessionHasErrors('asset');
+        $this->get(route('assets.show', $approved))->assertOk()->assertDontSee('action="'.route('assets.destroy', $approved).'"', false);
+        $this->assertNotSoftDeleted('assets', ['id' => $approved->id]);
+
+        $poster = Asset::create(['uploaded_by' => $user->id, 'title' => 'Главная афиша', 'type' => 'Фото', 'status' => 'Черновик']);
         PublicSiteSetting::create(['project_id' => $project->id, 'poster_asset_id' => $poster->id]);
         $this->delete(route('assets.destroy', $poster))->assertSessionHasErrors('asset');
+        $this->get(route('assets.show', $poster))->assertOk()->assertDontSee('action="'.route('assets.destroy', $poster).'"', false);
         $this->assertNotSoftDeleted('assets', ['id' => $poster->id]);
+
+        $publishedAsset = Asset::create(['uploaded_by' => $user->id, 'title' => 'Кадр на сайте', 'type' => 'Фото', 'status' => 'Черновик']);
+        $publication = Publication::create(['author_id' => $user->id, 'title' => 'Новость', 'type' => 'Фото', 'status' => 'Опубликовано', 'is_published' => true, 'published_at' => now()]);
+        $publication->assets()->attach($publishedAsset);
+        $this->delete(route('assets.destroy', $publishedAsset))->assertSessionHasErrors('asset');
+        $this->assertNotSoftDeleted('assets', ['id' => $publishedAsset->id]);
     }
 
     public function test_publication_can_be_deleted_without_deleting_media_asset(): void
