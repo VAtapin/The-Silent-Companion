@@ -18,4 +18,4 @@
         @elseif($asset->mime_type && str_starts_with($asset->mime_type, 'image/'))<img src="{{ route('public.media', $asset) }}" alt="{{ $asset->title }}" class="w-full rounded-2xl object-contain">
         @elseif($asset->mime_type && str_starts_with($asset->mime_type, 'video/'))<video controls preload="metadata" class="w-full rounded-2xl bg-black"><source src="{{ route('public.media', $asset) }}" type="{{ $asset->mime_type }}"></video>@endif
     @endforeach</div>@endif
-    </article></main></body></html>
+    </article></main><x-public-footer :title="$project?->localized('title_ru') ?: __('ui.film')" :settings="$settings" /></body></html>

@@ -33,6 +33,19 @@ class PublicController extends Controller
         ]);
     }
 
+    public function legal(string $page): View
+    {
+        abort_unless(in_array($page, ['impressum', 'datenschutz'], true), 404);
+        $settings = PublicSiteSetting::first() ?? new PublicSiteSetting;
+
+        return view('public.legal', [
+            'page' => $page,
+            'content' => $settings->legalContent($page),
+            'project' => Project::first(),
+            'settings' => $settings,
+        ]);
+    }
+
     public function sitemap(): Response
     {
         return response()->view('public.sitemap', [

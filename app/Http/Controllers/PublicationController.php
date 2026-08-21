@@ -182,6 +182,20 @@ class PublicationController extends Controller
         return back()->with('success', 'Публичная страница обновлена.');
     }
 
+    public function updateLegal(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'impressum' => ['required', 'string', 'max:100000'],
+            'privacy_policy' => ['required', 'string', 'max:100000'],
+        ]);
+        $settings = PublicSiteSetting::firstOrNew(['project_id' => Project::firstOrFail()->id]);
+        $old = $settings->exists ? $settings->only(array_keys($data)) : [];
+        $settings->fill($data)->save();
+        ActivityLogger::write('Изменение правовых страниц', $settings, 'Impressum и Datenschutz', $old, $data);
+
+        return redirect()->route('publications.index', ['tab' => 'legal'])->with('success', 'Правовые страницы обновлены.');
+    }
+
     public function uploadPoster(Request $request): RedirectResponse
     {
         $maxKb = max(1, (int) floor(min(25 * 1024 * 1024, UploadedFile::getMaxFilesize(), config('production.max_upload_kb') * 1024) / 1024));

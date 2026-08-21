@@ -2,7 +2,7 @@
 @section('title','Публикации')
 @section('content')
 <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between"><div><p class="text-sm text-amber-500">Ничего не публикуется автоматически</p><h1>Публичная страница</h1></div><a href="{{ route('public.home') }}" target="_blank" class="btn-secondary">Открыть сайт</a></div>
-<div x-data="{tab: @js(request('tab') === 'site' || $errors->has('poster_file') ? 'site' : 'materials')}" class="mt-7"><div class="flex flex-wrap gap-2"><button @click="tab='materials'" :class="tab==='materials'?'bg-ink-900 text-white':'bg-white'" class="rounded-xl px-4 py-2 text-sm">Публикации</button><button @click="tab='site'" :class="tab==='site'?'bg-ink-900 text-white':'bg-white'" class="rounded-xl px-4 py-2 text-sm">Главная страница</button><button @click="tab='donations'" :class="tab==='donations'?'bg-ink-900 text-white':'bg-white'" class="rounded-xl px-4 py-2 text-sm">Пожертвования</button></div>
+<div x-data="{tab: @js(in_array(request('tab'), ['site', 'donations', 'legal'], true) ? request('tab') : (($errors->has('impressum') || $errors->has('privacy_policy')) ? 'legal' : ($errors->has('poster_file') ? 'site' : 'materials')))}" class="mt-7"><div class="flex flex-wrap gap-2"><button @click="tab='materials'" :class="tab==='materials'?'bg-ink-900 text-white':'bg-white'" class="rounded-xl px-4 py-2 text-sm">Публикации</button><button @click="tab='site'" :class="tab==='site'?'bg-ink-900 text-white':'bg-white'" class="rounded-xl px-4 py-2 text-sm">Главная страница</button><button @click="tab='donations'" :class="tab==='donations'?'bg-ink-900 text-white':'bg-white'" class="rounded-xl px-4 py-2 text-sm">Пожертвования</button><button @click="tab='legal'" :class="tab==='legal'?'bg-ink-900 text-white':'bg-white'" class="rounded-xl px-4 py-2 text-sm">Правовые страницы</button></div>
 <section x-show="tab==='materials'" class="mt-5">
     <div class="mb-5 rounded-2xl border border-amber-400/50 bg-amber-50 p-4 text-sm leading-6 text-slate-700">
         <b>Где появляются публикации:</b> на главной странице сразу под полноэкранной афишей, в разделе «Опубликованные материалы».
@@ -134,5 +134,28 @@
     </aside>
 </section>
 <section x-show="tab==='donations'" class="card mt-5 max-w-3xl"><h2>Поддержать создание фильма</h2><form method="POST" action="{{ route('publications.donations') }}" class="mt-4 space-y-4">@csrf @method('PUT')<div><label>Заголовок (RU)</label><input name="title" value="{{ $donation->title }}" required></div><div><label>Описание цели (RU)</label><textarea name="goal_description">{{ $donation->goal_description }}</textarea></div><details class="rounded-xl border border-mist-200 p-4"><summary class="cursor-pointer font-semibold">Переводы EN / DE</summary><div class="mt-4 space-y-4"><div class="field-grid"><div><label>Title (EN)</label><input name="title_en" value="{{ $donation->title_en }}"></div><div><label>Titel (DE)</label><input name="title_de" value="{{ $donation->title_de }}"></div></div><div class="field-grid"><div><label>Goal (EN)</label><textarea name="goal_description_en">{{ $donation->goal_description_en }}</textarea></div><div><label>Ziel (DE)</label><textarea name="goal_description_de">{{ $donation->goal_description_de }}</textarea></div></div><div class="field-grid"><div><label>Additional methods (EN)</label><textarea name="additional_methods_en">{{ $donation->additional_methods_en }}</textarea></div><div><label>Weitere Möglichkeiten (DE)</label><textarea name="additional_methods_de">{{ $donation->additional_methods_de }}</textarea></div></div></div></details><div><label>Банковские реквизиты</label><textarea name="bank_details">{{ $donation->bank_details }}</textarea></div><div><label>PayPal или другая ссылка</label><input type="url" name="payment_url" value="{{ $donation->payment_url }}"></div><div><label>Дополнительные способы (RU)</label><textarea name="additional_methods">{{ $donation->additional_methods }}</textarea></div><div><label>Контакт</label><input name="contact" value="{{ $donation->contact }}"></div><div class="field-grid"><div><label>Изображение</label><select name="image_asset_id"><option value="">—</option>@foreach($assets as $asset)<option value="{{ $asset->id }}" @selected($donation->image_asset_id===$asset->id)>{{ $asset->title }}</option>@endforeach</select></div><div><label>QR-код</label><select name="qr_asset_id"><option value="">—</option>@foreach($assets as $asset)<option value="{{ $asset->id }}" @selected($donation->qr_asset_id===$asset->id)>{{ $asset->title }}</option>@endforeach</select></div></div><label class="flex gap-2"><input class="h-4 w-4" type="checkbox" name="is_visible" value="1" @checked($donation->is_visible)><span>Показывать блок на публичной странице</span></label><button class="btn-primary">Сохранить настройки</button></form></section>
+<section x-show="tab==='legal'" class="mt-5 grid max-w-6xl gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
+    <div class="card">
+        <h2>Impressum и Datenschutz</h2>
+        <p class="mt-2 text-sm leading-6 text-slate-600">Обе страницы публикуются только на немецком языке. Ссылки на них автоматически показываются внизу русской, английской и немецкой версии сайта.</p>
+        <div class="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm leading-6 text-amber-900"><b>Обязательно замените поля в квадратных скобках.</b> Пока не указаны владелец, полный адрес, телефон, хостинг и срок хранения журналов, шаблон нельзя считать окончательно заполненным.</div>
+        <form method="POST" action="{{ route('publications.legal') }}" class="mt-5 space-y-5">
+            @csrf
+            @method('PUT')
+            <div><label>Impressum (DE)</label><textarea class="min-h-[32rem] font-mono text-sm leading-6" name="impressum" required>{{ old('impressum', $siteSettings->legalContent('impressum')) }}</textarea></div>
+            <div><label>Datenschutzerklärung (DE)</label><textarea class="min-h-[44rem] font-mono text-sm leading-6" name="privacy_policy" required>{{ old('privacy_policy', $siteSettings->legalContent('datenschutz')) }}</textarea></div>
+            <button class="btn-primary">Сохранить правовые страницы</button>
+        </form>
+    </div>
+    <aside class="card self-start xl:sticky xl:top-7">
+        <h2>Предпросмотр</h2>
+        <p class="mt-2 text-sm leading-6 text-slate-600">Поддерживается Markdown: <code># Заголовок</code>, <code>## Раздел</code>, списки и ссылки. Произвольный HTML удаляется.</p>
+        <div class="mt-4 grid gap-2">
+            <a href="{{ route('public.legal', 'impressum') }}" target="_blank" class="btn-secondary w-full">Открыть Impressum</a>
+            <a href="{{ route('public.legal', 'datenschutz') }}" target="_blank" class="btn-secondary w-full">Открыть Datenschutz</a>
+        </div>
+        <p class="mt-4 text-xs leading-5 text-slate-500">Все изменения записываются в историю. Предыдущую версию можно восстановить в разделе «История изменений».</p>
+    </aside>
+</section>
 </div>
 @endsection

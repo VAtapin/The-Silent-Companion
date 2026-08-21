@@ -452,6 +452,51 @@ class FilmProductionTest extends TestCase
         $this->assertStringContainsString(route('login'), $footer);
     }
 
+    public function test_german_legal_pages_are_linked_from_every_public_language(): void
+    {
+        $this->baseData();
+        $impressumUrl = route('public.legal', 'impressum');
+        $privacyUrl = route('public.legal', 'datenschutz');
+
+        foreach (['/', '/en', '/de'] as $url) {
+            $this->get($url)->assertOk()
+                ->assertSee($impressumUrl, false)
+                ->assertSee($privacyUrl, false);
+        }
+
+        $this->get($impressumUrl)->assertOk()
+            ->assertSee('<html lang="de">', false)
+            ->assertSee('<h1>Impressum</h1>', false)
+            ->assertSee($privacyUrl, false);
+        $this->get($privacyUrl)->assertOk()
+            ->assertSee('<html lang="de">', false)
+            ->assertSee('<h1>Datenschutzerklärung</h1>', false)
+            ->assertSee($impressumUrl, false);
+    }
+
+    public function test_legal_pages_can_be_edited_and_restored_from_workspace(): void
+    {
+        [$user, $project] = $this->baseData();
+        $settings = PublicSiteSetting::create(['project_id' => $project->id, 'impressum' => '# Alte Fassung', 'privacy_policy' => '# Alter Datenschutz']);
+
+        $this->actingAs($user)->put(route('publications.legal'), [
+            'impressum' => '# Neues Impressum',
+            'privacy_policy' => "# Neue Datenschutzerklärung\n\n<script>alert('unsafe')</script>",
+        ])->assertRedirect(route('publications.index', ['tab' => 'legal']))->assertSessionHas('success');
+
+        $this->assertSame('# Neues Impressum', $settings->fresh()->impressum);
+        $this->assertDatabaseHas('activity_logs', ['subject_type' => PublicSiteSetting::class, 'subject_id' => $settings->id, 'action' => 'Изменение правовых страниц']);
+        $this->get(route('public.legal', 'impressum'))->assertOk()->assertSee('<h1>Neues Impressum</h1>', false);
+        $this->get(route('public.legal', 'datenschutz'))->assertOk()->assertSee('<h1>Neue Datenschutzerklärung</h1>', false)->assertDontSee('<script>', false);
+
+        $log = ActivityLog::where('subject_type', PublicSiteSetting::class)->where('subject_id', $settings->id)->latest('id')->firstOrFail();
+        $this->post(route('activity.restore', $log))->assertRedirect()->assertSessionHas('success');
+        $this->assertSame('# Alte Fassung', $settings->fresh()->impressum);
+
+        auth()->logout();
+        $this->put(route('publications.legal'), ['impressum' => 'x', 'privacy_policy' => 'y'])->assertRedirect('/login');
+    }
+
     public function test_workspace_is_always_russian_and_has_no_language_switcher(): void
     {
         [$user] = $this->baseData();

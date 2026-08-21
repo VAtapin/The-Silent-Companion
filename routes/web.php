@@ -29,6 +29,7 @@ Route::prefix('de')->middleware('locale:de')->group(function () {
 });
 Route::get('/sitemap.xml', [PublicController::class, 'sitemap'])->name('public.sitemap');
 Route::get('/media/{asset}', [PublicController::class, 'media'])->name('public.media');
+Route::get('/{page}', [PublicController::class, 'legal'])->middleware('locale:de')->whereIn('page', ['impressum', 'datenschutz'])->name('public.legal');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'create'])->name('login');
@@ -88,6 +89,7 @@ Route::middleware(['auth', 'active'])->prefix('workspace')->group(function () {
     Route::get('/publications/media/options', [PublicationController::class, 'mediaOptions'])->name('publications.media-options');
     Route::post('/publications', [PublicationController::class, 'store'])->name('publications.store');
     Route::put('/publications/site', [PublicationController::class, 'updateSite'])->name('publications.site');
+    Route::put('/publications/legal', [PublicationController::class, 'updateLegal'])->name('publications.legal');
     Route::post('/publications/site/poster', [PublicationController::class, 'uploadPoster'])->name('publications.poster');
     Route::put('/publications/donations', [PublicationController::class, 'updateDonation'])->name('publications.donations');
     Route::put('/publications/{publication}', [PublicationController::class, 'update'])->name('publications.update');

@@ -34,7 +34,7 @@ class ActivityLogController extends Controller
         Asset::class => ['title', 'description', 'status', 'review_comment', 'author', 'source', 'has_usage_permission', 'comment'],
         ChecklistItem::class => ['title', 'description', 'comment', 'assignee_id', 'due_date', 'status'],
         Publication::class => ['title', 'title_en', 'title_de', 'description', 'description_en', 'description_de', 'type', 'status', 'published_at', 'unpublished_at', 'sort_order', 'is_published'],
-        PublicSiteSetting::class => ['public_summary', 'public_summary_en', 'public_summary_de', 'poster_asset_id', 'contact', 'official_links'],
+        PublicSiteSetting::class => ['public_summary', 'public_summary_en', 'public_summary_de', 'poster_asset_id', 'contact', 'official_links', 'impressum', 'privacy_policy'],
         DonationSetting::class => ['title', 'title_en', 'title_de', 'goal_description', 'goal_description_en', 'goal_description_de', 'bank_details', 'payment_url', 'additional_methods', 'additional_methods_en', 'additional_methods_de', 'contact', 'image_asset_id', 'qr_asset_id', 'is_visible'],
     ];
 
