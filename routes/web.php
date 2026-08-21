@@ -65,6 +65,7 @@ Route::middleware(['auth', 'active'])->prefix('workspace')->group(function () {
     Route::post('/assets', [AssetController::class, 'store'])->name('assets.store');
     Route::get('/assets/{asset}/edit', [AssetController::class, 'edit'])->name('assets.edit');
     Route::put('/assets/{asset}', [AssetController::class, 'update'])->name('assets.update');
+    Route::delete('/assets/{asset}', [AssetController::class, 'destroy'])->name('assets.destroy');
     Route::get('/assets/{asset}', [AssetController::class, 'show'])->name('assets.show');
     Route::put('/assets/{asset}/status', [AssetController::class, 'updateStatus'])->name('assets.status');
     Route::get('/assets/{asset}/download', [AssetController::class, 'download'])->name('assets.download');

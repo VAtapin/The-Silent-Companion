@@ -7,8 +7,10 @@ use App\Models\Asset;
 use App\Models\AssetCategory;
 use App\Models\Character;
 use App\Models\ChecklistItem;
+use App\Models\DonationSetting;
 use App\Models\Location;
 use App\Models\Prop;
+use App\Models\PublicSiteSetting;
 use App\Models\Scene;
 use App\Models\Shot;
 use App\Services\ActivityLogger;
@@ -115,6 +117,24 @@ class AssetController extends Controller
         ActivityLogger::write('Редактирование материала', $asset, $asset->title, $old, $changes);
 
         return redirect()->route('assets.show', $asset)->with('success', 'Материал обновлён, связи и чек-лист пересчитаны.');
+    }
+
+    public function destroy(Asset $asset): RedirectResponse
+    {
+        if (PublicSiteSetting::where('poster_asset_id', $asset->id)->exists()) {
+            return back()->withErrors(['asset' => 'Этот материал установлен фоном главной страницы. Сначала выберите другую афишу.']);
+        }
+        if (DonationSetting::where('image_asset_id', $asset->id)->orWhere('qr_asset_id', $asset->id)->exists()) {
+            return back()->withErrors(['asset' => 'Этот материал используется в блоке пожертвований. Сначала замените его в настройках публикаций.']);
+        }
+
+        $items = $asset->checklistItems()->get();
+        $title = $asset->title;
+        ActivityLogger::write('Удаление материала', $asset, $title, $asset->toArray(), []);
+        $asset->delete();
+        $items->each(fn (ChecklistItem $item) => $this->progress->recalculate($item));
+
+        return redirect()->route('assets.index')->with('success', "Материал «{$title}» удалён из рабочей зоны. Исходный файл сохранён от случайного уничтожения.");
     }
 
     public function updateStatus(Request $request, Asset $asset): RedirectResponse

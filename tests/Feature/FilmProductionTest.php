@@ -686,7 +686,23 @@ class FilmProductionTest extends TestCase
             ->assertSessionHasErrors(['review_comment' => 'Напишите, что именно нужно исправить или переснять. Этот комментарий увидит загрузивший материал человек.']);
         $this->put(route('assets.status', $asset), ['status' => 'Требуется переснять', 'review_comment' => 'Снять крупнее и без блика.'])->assertRedirect();
 
+        $this->get(route('assets.show', $asset))->assertOk()->assertSee('Комментарий сохранён и будет показан загрузившему материал человеку.');
         $this->get(route('dashboard'))->assertOk()->assertSee('Требует вашего внимания')->assertSee('Снять крупнее и без блика.');
+    }
+
+    public function test_material_can_be_soft_deleted_but_current_home_poster_is_protected(): void
+    {
+        [$user, $project] = $this->baseData();
+        $asset = Asset::create(['uploaded_by' => $user->id, 'title' => 'Удаляемый материал', 'type' => 'Фото', 'status' => 'Черновик', 'file_path' => 'assets/source.jpg']);
+
+        $this->actingAs($user)->delete(route('assets.destroy', $asset))->assertRedirect(route('assets.index'))->assertSessionHas('success');
+        $this->assertSoftDeleted('assets', ['id' => $asset->id]);
+        $this->assertSame('assets/source.jpg', Asset::withTrashed()->findOrFail($asset->id)->file_path);
+
+        $poster = Asset::create(['uploaded_by' => $user->id, 'title' => 'Главная афиша', 'type' => 'Фото', 'status' => 'Утверждено']);
+        PublicSiteSetting::create(['project_id' => $project->id, 'poster_asset_id' => $poster->id]);
+        $this->delete(route('assets.destroy', $poster))->assertSessionHasErrors('asset');
+        $this->assertNotSoftDeleted('assets', ['id' => $poster->id]);
     }
 
     public function test_publication_can_be_deleted_without_deleting_media_asset(): void
