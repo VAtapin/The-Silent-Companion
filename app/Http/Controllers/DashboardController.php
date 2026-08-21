@@ -33,7 +33,11 @@ class DashboardController extends Controller
             ],
             'missingItems' => ChecklistItem::where('status', 'Требуются материалы')->orWhere('has_warning', true)->limit(6)->get(),
             'recentAssets' => Asset::with('category')->latest()->limit(6)->get(),
-            'pendingAssets' => Asset::whereIn('status', ['Загружено', 'На проверке'])->count(),
+            'needsAttentionAssets' => Asset::query()
+                ->where('uploaded_by', auth()->id())
+                ->whereIn('status', ['Отклонено', 'Требуется переснять'])
+                ->latest('updated_at')->limit(6)->get(),
+            'pendingAssets' => Asset::where('status', 'На проверке')->count(),
             'reviewScenes' => Scene::where('status', 'На проверке')->count(),
             'activity' => ActivityLog::latest()->limit(8)->get(),
             'aiUsage' => [

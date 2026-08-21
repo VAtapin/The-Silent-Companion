@@ -25,6 +25,7 @@
                             <form method="POST" action="{{ route('publications.translate', $publication) }}" @if($publication->title_en || $publication->title_de) onsubmit="return confirm('Заменить существующие английский и немецкий переводы?')" @endif>@csrf<button class="btn-secondary">Перевести с ИИ</button></form>
                             <form method="POST" action="{{ route('publications.visibility', $publication) }}">@csrf<input type="hidden" name="visible" value="{{ $visible ? 0 : 1 }}"><button class="{{ $visible ? 'btn-secondary' : 'btn-primary' }}">{{ $visible ? 'Скрыть с сайта' : 'Показать на сайте' }}</button></form>
                             <button type="button" @click="edit=!edit" class="btn-secondary">Изменить</button>
+                            <form method="POST" action="{{ route('publications.destroy', $publication) }}" onsubmit="return confirm('Удалить эту публикацию? Прикреплённые файлы останутся в медиатеке.')">@csrf @method('DELETE')<button class="btn-secondary text-red-700">Удалить</button></form>
                         </div>
                     </div>
                     <form x-show="edit" x-cloak method="POST" action="{{ route('publications.update',$publication) }}" enctype="multipart/form-data" class="mt-4 space-y-4 rounded-xl bg-mist-50 p-4">

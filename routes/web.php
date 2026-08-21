@@ -63,6 +63,8 @@ Route::middleware(['auth', 'active'])->prefix('workspace')->group(function () {
     Route::get('/assets', [AssetController::class, 'index'])->name('assets.index');
     Route::get('/assets/create', [AssetController::class, 'create'])->name('assets.create');
     Route::post('/assets', [AssetController::class, 'store'])->name('assets.store');
+    Route::get('/assets/{asset}/edit', [AssetController::class, 'edit'])->name('assets.edit');
+    Route::put('/assets/{asset}', [AssetController::class, 'update'])->name('assets.update');
     Route::get('/assets/{asset}', [AssetController::class, 'show'])->name('assets.show');
     Route::put('/assets/{asset}/status', [AssetController::class, 'updateStatus'])->name('assets.status');
     Route::get('/assets/{asset}/download', [AssetController::class, 'download'])->name('assets.download');
@@ -96,6 +98,7 @@ Route::middleware(['auth', 'active'])->prefix('workspace')->group(function () {
     Route::put('/publications/{publication}', [PublicationController::class, 'update'])->name('publications.update');
     Route::post('/publications/{publication}/translate', [PublicationController::class, 'translate'])->name('publications.translate');
     Route::post('/publications/{publication}/visibility', [PublicationController::class, 'visibility'])->name('publications.visibility');
+    Route::delete('/publications/{publication}', [PublicationController::class, 'destroy'])->name('publications.destroy');
 
     Route::middleware('throttle:10,1')->group(function () {
         Route::get('/ai', [AiAssistantController::class, 'index'])->name('ai.index');

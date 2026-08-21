@@ -645,6 +645,60 @@ class FilmProductionTest extends TestCase
         $this->get('/')->assertOk()->assertDontSee('СЕКРЕТНЫЕ ПРАВИЛА КАМЕРЫ')->assertDontSee('СЕКРЕТНЫЙ ФИНАЛ')->assertDontSee($user->email);
     }
 
+    public function test_material_metadata_and_links_can_be_edited_without_replacing_file(): void
+    {
+        [$user, , , $item, $character] = $this->baseData();
+        $asset = Asset::create(['uploaded_by' => $user->id, 'title' => 'Старое название', 'type' => 'Фото', 'status' => 'На проверке', 'file_path' => 'assets/original.jpg']);
+
+        $this->actingAs($user)->put(route('assets.update', $asset), [
+            'title' => 'Новое название', 'description' => 'Исправленное описание', 'type' => 'Фото', 'status' => 'Утверждено',
+            'character_ids' => [$character->id], 'checklist_item_ids' => [$item->id], 'has_usage_permission' => 1,
+        ])->assertRedirect(route('assets.show', $asset))->assertSessionHas('success');
+
+        $asset->refresh();
+        $this->assertSame('Новое название', $asset->title);
+        $this->assertSame('assets/original.jpg', $asset->file_path);
+        $this->assertTrue($asset->characters->contains($character));
+        $this->assertTrue($asset->checklistItems->contains($item));
+    }
+
+    public function test_rejected_or_reshoot_material_requires_clear_comment_and_notifies_uploader(): void
+    {
+        [$user] = $this->baseData();
+        $asset = Asset::create(['uploaded_by' => $user->id, 'title' => 'Пробный кадр', 'type' => 'Фото', 'status' => 'На проверке']);
+
+        $this->actingAs($user)->put(route('assets.status', $asset), ['status' => 'Требуется переснять'])
+            ->assertSessionHasErrors(['review_comment' => 'Напишите, что именно нужно исправить или переснять. Этот комментарий увидит загрузивший материал человек.']);
+        $this->put(route('assets.status', $asset), ['status' => 'Требуется переснять', 'review_comment' => 'Снять крупнее и без блика.'])->assertRedirect();
+
+        $this->get(route('dashboard'))->assertOk()->assertSee('Требует вашего внимания')->assertSee('Снять крупнее и без блика.');
+    }
+
+    public function test_publication_can_be_deleted_without_deleting_media_asset(): void
+    {
+        [$user] = $this->baseData();
+        $asset = Asset::create(['uploaded_by' => $user->id, 'title' => 'Общий кадр', 'type' => 'Фото', 'status' => 'Утверждено']);
+        $publication = Publication::create(['author_id' => $user->id, 'title' => 'Удаляемая публикация', 'type' => 'Фото', 'status' => 'Черновик']);
+        $publication->assets()->attach($asset);
+
+        $this->actingAs($user)->delete(route('publications.destroy', $publication))->assertRedirect(route('publications.index'))->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('publications', ['id' => $publication->id]);
+        $this->assertDatabaseHas('assets', ['id' => $asset->id]);
+    }
+
+    public function test_dashboard_summary_cards_are_clickable_and_checklist_filters_work(): void
+    {
+        [$user, , , $item] = $this->baseData();
+        $item->update(['status' => 'Выполнено', 'has_warning' => true]);
+
+        $this->actingAs($user)->get(route('dashboard'))->assertOk()
+            ->assertSee(route('checklist.index', ['filter' => 'done']), false)
+            ->assertSee(route('checklist.index', ['filter' => 'warning']), false)
+            ->assertSee(route('assets.index', ['status' => 'На проверке']), false);
+        $this->get(route('checklist.index', ['filter' => 'done']))->assertOk()->assertSee($item->title)->assertSee('выполненные пункты');
+    }
+
     private function baseData(int $minimum = 0): array
     {
         $user = User::factory()->create(['is_active' => true]);

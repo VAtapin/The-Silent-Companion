@@ -12,19 +12,31 @@ use App\Services\ActivityLogger;
 use App\Services\ChecklistProgressService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class ChecklistController extends Controller
 {
     public function __construct(private readonly ChecklistProgressService $progress) {}
 
-    public function index(): View
+    public function index(Request $request): View
     {
+        $filter = $request->validate(['filter' => ['nullable', Rule::in(['done', 'warning'])]])['filter'] ?? null;
+        $sections = ChecklistSection::with(['children.items.requirements.category', 'items.requirements.category'])->whereNull('parent_id')->orderBy('sort_order')->get();
+        if ($filter) {
+            $matches = fn (ChecklistItem $item): bool => $filter === 'done' ? $item->status === 'Выполнено' : (bool) $item->has_warning;
+            $sections->each(function (ChecklistSection $section) use ($matches): void {
+                $section->setRelation('items', $section->items->filter($matches)->values());
+                $section->children->each(fn (ChecklistSection $child) => $child->setRelation('items', $child->items->filter($matches)->values()));
+            });
+        }
+
         return view('checklist.index', [
-            'sections' => ChecklistSection::with(['children.items.requirements.category', 'items.requirements.category'])->whereNull('parent_id')->orderBy('sort_order')->get(),
+            'sections' => $sections,
             'allSections' => ChecklistSection::orderBy('title')->get(),
             'categories' => AssetCategory::orderBy('name')->get(),
             'users' => User::where('is_active', true)->orderBy('name')->get(),
+            'filter' => $filter,
         ]);
     }
 

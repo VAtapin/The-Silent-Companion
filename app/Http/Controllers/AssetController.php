@@ -43,11 +43,7 @@ class AssetController extends Controller
 
     public function create(): View
     {
-        return view('assets.create', [
-            'categories' => AssetCategory::orderBy('scope')->orderBy('name')->get(), 'characters' => Character::orderBy('name')->get(),
-            'locations' => Location::orderBy('name')->get(), 'props' => Prop::orderBy('name')->get(), 'acts' => Act::orderBy('number')->get(),
-            'scenes' => Scene::orderBy('code')->get(), 'shots' => Shot::orderBy('code')->get(), 'checklistItems' => ChecklistItem::orderBy('title')->get(),
-        ]);
+        return view('assets.create', $this->formOptions());
     }
 
     public function store(Request $request): RedirectResponse
@@ -89,11 +85,45 @@ class AssetController extends Controller
         return view('assets.show', compact('asset'));
     }
 
+    public function edit(Asset $asset): View
+    {
+        $asset->load(['characters', 'locations', 'props', 'acts', 'scenes', 'shots', 'checklistItems']);
+
+        return view('assets.edit', ['asset' => $asset, ...$this->formOptions()]);
+    }
+
+    public function update(Request $request, Asset $asset): RedirectResponse
+    {
+        $data = $request->validate([
+            'title' => ['required', 'string', 'max:255'], 'description' => ['nullable', 'string'],
+            'type' => ['required', Rule::in(Asset::TYPES)], 'category_id' => ['nullable', 'exists:asset_categories,id'],
+            'external_url' => ['nullable', 'url', 'max:2000'], 'text_content' => ['nullable', 'string'],
+            'view_angle' => ['nullable', 'string', 'max:255'], 'captured_at' => ['nullable', 'date'], 'author' => ['nullable', 'string', 'max:255'],
+            'source' => ['nullable', 'string', 'max:500'], 'has_usage_permission' => ['nullable', 'boolean'], 'comment' => ['nullable', 'string'],
+            'status' => ['required', Rule::in(Asset::STATUSES)],
+            'character_ids' => ['array'], 'character_ids.*' => ['exists:characters,id'], 'location_ids' => ['array'], 'location_ids.*' => ['exists:locations,id'],
+            'prop_ids' => ['array'], 'prop_ids.*' => ['exists:props,id'], 'act_ids' => ['array'], 'act_ids.*' => ['exists:acts,id'],
+            'scene_ids' => ['array'], 'scene_ids.*' => ['exists:scenes,id'], 'shot_ids' => ['array'], 'shot_ids.*' => ['exists:shots,id'],
+            'checklist_item_ids' => ['array'], 'checklist_item_ids.*' => ['exists:checklist_items,id'],
+        ]);
+        $changes = collect($data)->except(['character_ids', 'location_ids', 'prop_ids', 'act_ids', 'scene_ids', 'shot_ids', 'checklist_item_ids'])->all();
+        $changes['has_usage_permission'] = $request->boolean('has_usage_permission');
+        $old = $asset->only(array_keys($changes));
+        $asset->update($changes);
+        $this->syncLinks($asset, $data);
+        $this->progress->recalculateForAsset($asset);
+        ActivityLogger::write('Редактирование материала', $asset, $asset->title, $old, $changes);
+
+        return redirect()->route('assets.show', $asset)->with('success', 'Материал обновлён, связи и чек-лист пересчитаны.');
+    }
+
     public function updateStatus(Request $request, Asset $asset): RedirectResponse
     {
         $data = $request->validate([
             'status' => ['required', Rule::in(Asset::STATUSES)],
             'review_comment' => [Rule::requiredIf(in_array($request->status, ['Отклонено', 'Требуется переснять'], true)), 'nullable', 'string', 'max:4000'],
+        ], [
+            'review_comment.required' => 'Напишите, что именно нужно исправить или переснять. Этот комментарий увидит загрузивший материал человек.',
         ]);
         $old = $asset->only(['status', 'review_comment']);
         $asset->update($data);
@@ -141,5 +171,14 @@ class AssetController extends Controller
         foreach ($map as $relation => $field) {
             $asset->{$relation}()->sync($data[$field] ?? []);
         }
+    }
+
+    private function formOptions(): array
+    {
+        return [
+            'categories' => AssetCategory::orderBy('scope')->orderBy('name')->get(), 'characters' => Character::orderBy('name')->get(),
+            'locations' => Location::orderBy('name')->get(), 'props' => Prop::orderBy('name')->get(), 'acts' => Act::orderBy('number')->get(),
+            'scenes' => Scene::orderBy('code')->get(), 'shots' => Shot::orderBy('code')->get(), 'checklistItems' => ChecklistItem::orderBy('title')->get(),
+        ];
     }
 }

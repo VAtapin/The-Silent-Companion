@@ -120,6 +120,16 @@ class PublicationController extends Controller
         return back()->with('success', $visible ? 'Публикация появилась на главной странице.' : 'Публикация скрыта с главной страницы.');
     }
 
+    public function destroy(Publication $publication): RedirectResponse
+    {
+        $title = $publication->title;
+        ActivityLogger::write('Удаление публикации', $publication, $title, $publication->toArray(), []);
+        $publication->assets()->detach();
+        $publication->delete();
+
+        return redirect()->route('publications.index')->with('success', "Публикация «{$title}» удалена. Материалы из медиатеки сохранены.");
+    }
+
     public function translate(Request $request, Publication $publication): RedirectResponse
     {
         try {
