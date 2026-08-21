@@ -44,7 +44,7 @@ Alpine.data('posterUpload', (maxBytes) => ({
 
     async compress(file) {
         const bitmap = await createImageBitmap(file);
-        const scale = Math.min(1, 1800 / bitmap.width, 2700 / bitmap.height);
+        const scale = Math.min(1, 2560 / bitmap.width, 1440 / bitmap.height);
         const canvas = document.createElement('canvas');
         canvas.width = Math.max(1, Math.round(bitmap.width * scale));
         canvas.height = Math.max(1, Math.round(bitmap.height * scale));

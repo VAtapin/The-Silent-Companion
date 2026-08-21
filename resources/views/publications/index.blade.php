@@ -18,13 +18,13 @@
                         <div class="py-5 text-center">
                             <span class="inline-flex rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink-900 shadow-sm">Выбрать афишу</span>
                             <p class="mt-3 text-sm font-medium text-ink-900">или перетащите изображение сюда</p>
-                            <p class="mt-1 text-xs text-slate-500">JPG, PNG или WEBP · фактический лимит сервера {{ number_format($posterUploadMaxBytes / 1048576, 1, ',', ' ') }} МБ</p>
+                            <p class="mt-1 text-xs text-slate-500">Широкое изображение 16:9 · JPG, PNG или WEBP · лимит {{ number_format($posterUploadMaxBytes / 1048576, 1, ',', ' ') }} МБ</p>
                             <p class="mt-1 text-xs text-slate-500">Большой PNG автоматически преобразуется в качественный JPG.</p>
                         </div>
                     </template>
                     <template x-if="preview">
-                        <div class="grid items-center gap-5 sm:grid-cols-[9rem_1fr]">
-                            <img :src="preview" alt="Предварительный просмотр афиши" class="aspect-[2/3] w-full rounded-xl object-cover shadow-md">
+                        <div class="grid items-center gap-5 sm:grid-cols-[16rem_1fr]">
+                            <img :src="preview" alt="Предварительный просмотр афиши" class="aspect-video w-full rounded-xl object-cover shadow-md">
                             <div>
                                 <p class="font-semibold text-ink-900" x-text="fileName"></p>
                                 <p class="mt-1 text-sm text-slate-500" x-text="fileSize"></p>
@@ -64,15 +64,15 @@
     </div>
     <aside class="card self-start lg:sticky lg:top-7">
         <h2>Как она размещается</h2>
-        <p class="mt-2 text-sm leading-6 text-slate-600">На компьютере афиша показывается полностью справа от названия и описания, а на телефоне — под текстом. Её мягко затемнённая копия создаёт фон первого экрана.</p>
+        <p class="mt-2 text-sm leading-6 text-slate-600">Широкая афиша 16:9 заполняет весь первый экран как фон. Название, слоган и описание накладываются поверх слева, а градиент сохраняет читаемость текста.</p>
         @if($siteSettings->poster_asset_id)
-            <div class="relative mt-5 aspect-[2/3] overflow-hidden rounded-2xl bg-ink-950">
+            <div class="relative mt-5 aspect-video overflow-hidden rounded-2xl bg-ink-950">
                 <img src="{{ route('public.media', $siteSettings->poster_asset_id) }}" alt="Текущая афиша" class="h-full w-full object-cover opacity-70">
-                <div class="absolute inset-0 bg-gradient-to-t from-ink-950/85 via-transparent to-transparent"></div>
+                <div class="absolute inset-0 bg-gradient-to-r from-ink-950/90 via-ink-950/45 to-transparent"></div>
                 <div class="absolute inset-x-0 bottom-0 p-4 text-white"><p class="text-xs uppercase tracking-[.22em] text-amber-400">Текущая афиша</p><p class="mt-1 text-xl font-semibold">Тихий спутник</p></div>
             </div>
         @else
-            <div class="mt-5 flex aspect-[2/3] items-center justify-center rounded-2xl bg-mist-100 p-6 text-center text-sm text-slate-500">Афиша ещё не выбрана</div>
+            <div class="mt-5 flex aspect-video items-center justify-center rounded-2xl bg-mist-100 p-6 text-center text-sm text-slate-500">Фоновая афиша ещё не выбрана</div>
         @endif
         <a href="{{ route('public.home') }}" target="_blank" class="btn-secondary mt-4 w-full">Посмотреть публичный сайт</a>
     </aside>

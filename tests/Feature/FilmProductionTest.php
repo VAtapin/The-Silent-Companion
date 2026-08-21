@@ -336,6 +336,21 @@ class FilmProductionTest extends TestCase
         Storage::disk('local')->assertExists($poster->file_path);
     }
 
+    public function test_public_poster_is_rendered_as_full_screen_background(): void
+    {
+        Storage::fake('local');
+        [$user, $project] = $this->baseData();
+        Storage::disk('local')->put('poster.jpg', 'poster');
+        $poster = Asset::create(['uploaded_by' => $user->id, 'title' => 'Широкая афиша', 'type' => 'Фото', 'status' => 'Утверждено', 'disk' => 'local', 'file_path' => 'poster.jpg', 'original_name' => 'poster.jpg', 'mime_type' => 'image/jpeg']);
+        PublicSiteSetting::create(['project_id' => $project->id, 'poster_asset_id' => $poster->id]);
+
+        $this->get(route('public.home'))
+            ->assertOk()
+            ->assertSee('min-h-screen', false)
+            ->assertSee('object-[68%_center]', false)
+            ->assertDontSee('aspect-[2/3]', false);
+    }
+
     public function test_public_home_does_not_disclose_internal_project_data(): void
     {
         [$user,$project] = $this->baseData();
