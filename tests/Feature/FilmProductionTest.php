@@ -437,6 +437,21 @@ class FilmProductionTest extends TestCase
         $this->get(route('public.publications.show.de', $publication))->assertOk()->assertSee('Deutscher Text');
     }
 
+    public function test_public_header_has_compact_flags_and_team_login_is_only_in_footer(): void
+    {
+        $this->baseData();
+
+        $html = $this->get(route('public.home'))->assertOk()->getContent();
+        $header = str($html)->between('<header', '</header>')->toString();
+        $footer = str($html)->after('<footer')->toString();
+
+        $this->assertStringContainsString('🇷🇺', $header);
+        $this->assertStringContainsString('🇬🇧', $header);
+        $this->assertStringContainsString('🇩🇪', $header);
+        $this->assertStringNotContainsString(route('login'), $header);
+        $this->assertStringContainsString(route('login'), $footer);
+    }
+
     public function test_workspace_is_always_russian_and_has_no_language_switcher(): void
     {
         [$user] = $this->baseData();
