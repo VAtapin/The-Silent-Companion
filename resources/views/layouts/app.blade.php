@@ -1,16 +1,15 @@
 <!DOCTYPE html>
-<html lang="{{ app()->getLocale() }}">
+<html lang="ru">
 <head>
     <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', __('ui.film')) — {{ __('ui.production') }}</title>
-    <script>window.interfaceTranslations = @json(trans('interface'));</script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body>
 <div x-data="{ nav: false }" class="min-h-screen lg:grid lg:grid-cols-[260px_1fr]">
-    <header class="sticky top-0 z-30 flex items-center justify-between bg-ink-950 px-4 py-3 text-white lg:hidden"><a href="{{ route('dashboard') }}" class="font-semibold">{{ __('ui.film') }}</a><div class="flex items-center gap-2"><x-language-switcher /><button type="button" @click="nav = !nav" class="rounded-lg border border-white/20 px-3 py-1.5">{{ __('ui.menu') }}</button></div></header>
+    <header class="sticky top-0 z-30 flex items-center justify-between bg-ink-950 px-4 py-3 text-white lg:hidden"><a href="{{ route('dashboard') }}" class="font-semibold">Тихий спутник</a><button type="button" @click="nav = !nav" class="rounded-lg border border-white/20 px-3 py-1.5">Меню</button></header>
     <aside :class="nav ? 'block' : 'hidden'" class="fixed inset-x-0 top-[52px] z-20 h-[calc(100vh-52px)] overflow-y-auto bg-ink-950 p-5 lg:sticky lg:top-0 lg:block lg:h-screen">
-        <div class="mb-8 hidden lg:block"><div class="flex items-start justify-between gap-2"><div><p class="text-xs uppercase tracking-[0.26em] text-amber-400">{{ __('ui.production') }}</p><p class="mt-2 text-xl font-semibold text-white">{{ __('ui.film') }}</p><p class="mt-1 text-xs text-mist-200/70">The Silent Companion</p></div><x-language-switcher /></div></div>
+        <div class="mb-8 hidden lg:block"><p class="text-xs uppercase tracking-[0.26em] text-amber-400">Производство фильма</p><p class="mt-2 text-xl font-semibold text-white">Тихий спутник</p><p class="mt-1 text-xs text-mist-200/70">The Silent Companion</p></div>
         @php($nav = [
             ['dashboard', __('ui.nav.dashboard'), 'dashboard'], ['project.show', __('ui.nav.project'), 'project.*'], ['structure.index', __('ui.nav.structure'), 'structure.*'], ['checklist.index', __('ui.nav.checklist'), 'checklist.*'], ['assets.index', __('ui.nav.assets'), 'assets.*'],
             ['catalog.index', __('ui.nav.characters'), null, ['characters']], ['catalog.index', __('ui.nav.locations'), null, ['locations']], ['catalog.index', __('ui.nav.props'), null, ['props']], ['documents.index', __('ui.nav.documents'), 'documents.*'], ['ai.index', __('ui.nav.ai'), 'ai.*'], ['publications.index', __('ui.nav.publications'), 'publications.*'], ['team.index', __('ui.nav.team'), 'team.*'], ['activity.index', __('ui.nav.activity'), 'activity.*'],

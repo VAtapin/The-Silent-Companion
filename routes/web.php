@@ -9,7 +9,6 @@ use App\Http\Controllers\ChecklistController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\FilmStructureController;
-use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\PublicationController;
 use App\Http\Controllers\PublicController;
@@ -31,14 +30,13 @@ Route::prefix('de')->middleware('locale:de')->group(function () {
 });
 Route::get('/sitemap.xml', [PublicController::class, 'sitemap'])->name('public.sitemap');
 Route::get('/media/{asset}', [PublicController::class, 'media'])->name('public.media');
-Route::get('/locale/{locale}', LocaleController::class)->name('locale.switch');
 
-Route::middleware(['guest', 'locale'])->group(function () {
+Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'create'])->name('login');
     Route::post('/login', [AuthController::class, 'store'])->name('login.store');
 });
 
-Route::middleware(['auth', 'active', 'locale'])->prefix('workspace')->group(function () {
+Route::middleware(['auth', 'active'])->prefix('workspace')->group(function () {
     Route::get('/', DashboardController::class)->name('dashboard');
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
 
@@ -93,6 +91,7 @@ Route::middleware(['auth', 'active', 'locale'])->prefix('workspace')->group(func
     Route::post('/publications/site/poster', [PublicationController::class, 'uploadPoster'])->name('publications.poster');
     Route::put('/publications/donations', [PublicationController::class, 'updateDonation'])->name('publications.donations');
     Route::put('/publications/{publication}', [PublicationController::class, 'update'])->name('publications.update');
+    Route::post('/publications/{publication}/translate', [PublicationController::class, 'translate'])->name('publications.translate');
     Route::post('/publications/{publication}/visibility', [PublicationController::class, 'visibility'])->name('publications.visibility');
 
     Route::middleware('throttle:10,1')->group(function () {

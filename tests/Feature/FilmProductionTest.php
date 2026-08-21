@@ -437,11 +437,30 @@ class FilmProductionTest extends TestCase
         $this->get(route('public.publications.show.de', $publication))->assertOk()->assertSee('Deutscher Text');
     }
 
-    public function test_workspace_language_switch_is_saved_in_session(): void
+    public function test_workspace_is_always_russian_and_has_no_language_switcher(): void
     {
         [$user] = $this->baseData();
-        $this->actingAs($user)->from(route('dashboard'))->get(route('locale.switch', 'de'))->assertRedirect(route('dashboard'));
-        $this->actingAs($user)->withSession(['locale' => 'de'])->get(route('dashboard'))->assertOk()->assertSee('Änderungsverlauf');
+        $this->actingAs($user)->withSession(['locale' => 'de'])->get(route('dashboard'))->assertOk()
+            ->assertSee('<html lang="ru">', false)
+            ->assertSee('История изменений')
+            ->assertDontSee('Language / Sprache / Язык');
+    }
+
+    public function test_publication_can_be_translated_to_english_and_german_with_ai(): void
+    {
+        [$user] = $this->baseData();
+        $this->configureOpenAi();
+        $publication = Publication::create(['author_id' => $user->id, 'title' => 'Первый тизер', 'description' => 'История о человеке и собаке.', 'type' => 'Новость', 'status' => 'Черновик']);
+        $translation = json_encode(['en' => ['title' => 'First teaser', 'description' => 'A story about a man and a dog.'], 'de' => ['title' => 'Erster Teaser', 'description' => 'Eine Geschichte über einen Mann und einen Hund.']], JSON_UNESCAPED_UNICODE);
+        Http::fake(['api.openai.com/v1/responses' => Http::response(['id' => 'resp_translation', 'output' => [['type' => 'message', 'content' => [['type' => 'output_text', 'text' => $translation]]]], 'usage' => ['input_tokens' => 120, 'output_tokens' => 80]], 200)]);
+
+        $this->actingAs($user)->post(route('publications.translate', $publication))->assertRedirect()->assertSessionHas('success');
+
+        $publication->refresh();
+        $this->assertSame('First teaser', $publication->title_en);
+        $this->assertSame('Erster Teaser', $publication->title_de);
+        $this->assertDatabaseHas('ai_requests', ['subject_type' => Publication::class, 'subject_id' => $publication->id, 'action' => 'translate_publication', 'status' => 'Завершён']);
+        $this->assertDatabaseHas('ai_usage_records', ['usage_type' => 'Текст', 'input_tokens' => 120, 'output_tokens' => 80]);
     }
 
     public function test_photo_can_be_uploaded_directly_with_publication(): void

@@ -2,24 +2,6 @@ import Alpine from 'alpinejs';
 
 window.Alpine = Alpine;
 
-const translateInterface = () => {
-    const translations = window.interfaceTranslations || {};
-    if (!Object.keys(translations).length) return;
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    const nodes = [];
-    while (walker.nextNode()) nodes.push(walker.currentNode);
-    nodes.forEach((node) => {
-        if (['SCRIPT', 'STYLE', 'TEXTAREA'].includes(node.parentElement?.tagName) || node.parentElement?.closest('[data-no-ui-translate]')) return;
-        const match = node.nodeValue.match(/^(\s*)(.*?)(\s*)$/s);
-        if (match && translations[match[2]]) node.nodeValue = match[1] + translations[match[2]] + match[3];
-    });
-    document.querySelectorAll('input[placeholder], textarea[placeholder]').forEach((element) => {
-        if (translations[element.placeholder]) element.placeholder = translations[element.placeholder];
-    });
-};
-
-document.addEventListener('DOMContentLoaded', translateInterface);
-
 Alpine.data('posterUpload', (maxBytes) => ({
     preview: null,
     fileName: '',

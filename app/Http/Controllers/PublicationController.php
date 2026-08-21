@@ -2,6 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\OpenAiException;
+use App\Models\AiConversation;
+use App\Models\AiMessage;
+use App\Models\AiRequest;
+use App\Models\AiUsageRecord;
 use App\Models\Asset;
 use App\Models\DonationSetting;
 use App\Models\Project;
@@ -9,15 +14,22 @@ use App\Models\Publication;
 use App\Models\PublicSiteSetting;
 use App\Services\ActivityLogger;
 use App\Services\AssetStorageService;
+use App\Services\OpenAiBudgetService;
+use App\Services\OpenAiService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class PublicationController extends Controller
 {
-    public function __construct(private readonly AssetStorageService $storage) {}
+    public function __construct(
+        private readonly AssetStorageService $storage,
+        private readonly OpenAiService $openai,
+        private readonly OpenAiBudgetService $budget,
+    ) {}
 
     public function index(): View
     {
@@ -81,6 +93,42 @@ class PublicationController extends Controller
         ActivityLogger::write($visible ? 'Публикация показана на сайте' : 'Публикация скрыта с сайта', $publication, $publication->title, $old, $changes);
 
         return back()->with('success', $visible ? 'Публикация появилась на главной странице.' : 'Публикация скрыта с главной страницы.');
+    }
+
+    public function translate(Request $request, Publication $publication): RedirectResponse
+    {
+        try {
+            $this->budget->assertCanRequest($request->user());
+        } catch (OpenAiException $exception) {
+            return back()->withErrors(['openai' => $exception->getMessage()]);
+        }
+
+        $source = ['title' => $publication->title, 'description' => $publication->description];
+        $prompt = "Переведи публикацию фильма с русского языка на английский и немецкий. Сохрани смысл, имена, абзацы и спокойный кинематографический тон. Ничего не добавляй от себя. Верни только корректный JSON без Markdown в формате: {\"en\":{\"title\":\"...\",\"description\":\"...\"},\"de\":{\"title\":\"...\",\"description\":\"...\"}}. Если описание пустое, верни пустую строку.\n\nИСХОДНЫЕ ДАННЫЕ:\n".json_encode($source, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $conversation = AiConversation::create(['project_id' => Project::firstOrFail()->id, 'user_id' => $request->user()->id, 'title' => 'Перевод публикации: '.$publication->title]);
+        $aiRequest = AiRequest::create(['conversation_id' => $conversation->id, 'user_id' => $request->user()->id, 'subject_type' => $publication->getMorphClass(), 'subject_id' => $publication->id, 'request_type' => 'Текст', 'action' => 'translate_publication', 'model' => config('openai.text_model') ?: 'не настроена', 'source_text' => $publication->description, 'prompt' => $prompt, 'status' => 'Выполняется']);
+        AiMessage::create(['conversation_id' => $conversation->id, 'request_id' => $aiRequest->id, 'user_id' => $request->user()->id, 'role' => 'user', 'content' => $prompt]);
+
+        try {
+            $result = $this->openai->text('Вы — профессиональный переводчик материалов фильма «Тихий спутник». Возвращайте исключительно запрошенный JSON.', $prompt);
+            $translations = $this->translationPayload($result['text']);
+            $changes = ['title_en' => $translations['en']['title'], 'description_en' => $translations['en']['description'], 'title_de' => $translations['de']['title'], 'description_de' => $translations['de']['description']];
+            $old = $publication->only(array_keys($changes));
+
+            DB::transaction(function () use ($request, $publication, $conversation, $aiRequest, $result, $changes, $old): void {
+                $publication->update($changes);
+                $aiRequest->update(['model' => $result['model'], 'result_text' => $result['text'], 'status' => 'Завершён', 'decision' => 'apply', 'api_request_id' => $result['request_id'], 'input_tokens' => $result['input_tokens'], 'output_tokens' => $result['output_tokens'], 'cost' => $result['cost'], 'duration_ms' => $result['duration_ms']]);
+                AiMessage::create(['conversation_id' => $conversation->id, 'request_id' => $aiRequest->id, 'role' => 'assistant', 'content' => $result['text']]);
+                AiUsageRecord::create(['request_id' => $aiRequest->id, 'user_id' => $request->user()->id, 'model' => $result['model'], 'usage_type' => 'Текст', 'input_tokens' => $result['input_tokens'], 'output_tokens' => $result['output_tokens'], 'cost' => $result['cost'], 'usage_date' => today()]);
+                ActivityLogger::write('Перевод публикации с ИИ', $publication, $publication->title, $old, $changes);
+            });
+        } catch (OpenAiException $exception) {
+            $aiRequest->update(['status' => 'Ошибка', 'error_message' => $exception->getMessage()]);
+
+            return back()->withErrors(['openai' => $exception->getMessage()]);
+        }
+
+        return back()->with('success', 'Английский и немецкий переводы публикации готовы.');
     }
 
     public function updateSite(Request $request): RedirectResponse
@@ -199,5 +247,21 @@ class PublicationController extends Controller
         }
 
         return $ids->filter()->unique()->values()->all();
+    }
+
+    private function translationPayload(string $text): array
+    {
+        $candidate = trim($text);
+        if (preg_match('/\{.*\}/s', $candidate, $match)) {
+            $candidate = $match[0];
+        }
+        $payload = json_decode($candidate, true);
+        foreach (['en', 'de'] as $locale) {
+            if (! is_array($payload[$locale] ?? null) || ! is_string($payload[$locale]['title'] ?? null) || ! is_string($payload[$locale]['description'] ?? null)) {
+                throw new OpenAiException('OpenAI вернул перевод в неверном формате. Повторите запрос.');
+            }
+        }
+
+        return $payload;
     }
 }

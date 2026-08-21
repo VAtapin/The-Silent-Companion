@@ -19,8 +19,10 @@
                             <h2 class="mt-2">{{ $publication->title }}</h2>
                             <p class="mt-2 text-sm text-slate-600">{{ $publication->description }}</p>
                             <p class="mt-2 text-xs {{ $publication->assets->isEmpty() ? 'font-semibold text-red-600' : 'text-slate-400' }}">Материалов: {{ $publication->assets->count() }} · {{ $publication->author?->name }}</p>
+                            <p class="mt-1 text-xs {{ $publication->title_en && $publication->title_de ? 'text-emerald-700' : 'text-amber-700' }}">{{ $publication->title_en && $publication->title_de ? 'Переводы EN и DE готовы' : 'Переводы EN и DE ещё не созданы' }}</p>
                         </div>
                         <div class="flex flex-wrap gap-2">
+                            <form method="POST" action="{{ route('publications.translate', $publication) }}" @if($publication->title_en || $publication->title_de) onsubmit="return confirm('Заменить существующие английский и немецкий переводы?')" @endif>@csrf<button class="btn-secondary">Перевести с ИИ</button></form>
                             <form method="POST" action="{{ route('publications.visibility', $publication) }}">@csrf<input type="hidden" name="visible" value="{{ $visible ? 0 : 1 }}"><button class="{{ $visible ? 'btn-secondary' : 'btn-primary' }}">{{ $visible ? 'Скрыть с сайта' : 'Показать на сайте' }}</button></form>
                             <button type="button" @click="edit=!edit" class="btn-secondary">Изменить</button>
                         </div>

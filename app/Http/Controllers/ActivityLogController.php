@@ -24,7 +24,7 @@ use Illuminate\View\View;
 class ActivityLogController extends Controller
 {
     private const RESTORABLE_FIELDS = [
-        Project::class => ['title_ru', 'title_en', 'tagline', 'logline', 'synopsis', 'genre', 'duration', 'aspect_ratio', 'frame_rate', 'resolution', 'language', 'visual_principle', 'sound_principle', 'color_palette', 'camera_rules', 'production_stage', 'firefly_board_url'],
+        Project::class => ['title_ru', 'title_en', 'title_de', 'tagline', 'tagline_en', 'tagline_de', 'logline', 'logline_en', 'logline_de', 'synopsis', 'genre', 'duration', 'aspect_ratio', 'frame_rate', 'resolution', 'language', 'visual_principle', 'sound_principle', 'color_palette', 'camera_rules', 'production_stage', 'firefly_board_url'],
         Act::class => ['number', 'title', 'description', 'planned_duration_seconds', 'actual_duration_seconds', 'sort_order', 'status'],
         Scene::class => ['code', 'number', 'title', 'action_description', 'location_id', 'assignee_id', 'time_of_day', 'weather', 'costume', 'dialogue', 'sounds', 'planned_duration_seconds', 'actual_duration_seconds', 'status', 'notes'],
         Shot::class => ['code', 'number', 'description', 'hero_action', 'dog_action', 'shot_size', 'camera_position', 'camera_movement', 'lens', 'start_frame', 'end_frame', 'planned_duration_seconds', 'actual_duration_seconds', 'sound', 'dialogue', 'creation_method', 'ai_model', 'prompt', 'negative_prompt', 'credits_spent', 'is_selected', 'status', 'notes'],
@@ -33,9 +33,9 @@ class ActivityLogController extends Controller
         Prop::class => ['name', 'type', 'description', 'color', 'dimensions', 'condition', 'continuity_requirements', 'status'],
         Asset::class => ['title', 'description', 'status', 'review_comment', 'author', 'source', 'has_usage_permission', 'comment'],
         ChecklistItem::class => ['title', 'description', 'comment', 'assignee_id', 'due_date', 'status'],
-        Publication::class => ['title', 'description', 'type', 'status', 'published_at', 'unpublished_at', 'sort_order', 'is_published'],
+        Publication::class => ['title', 'title_en', 'title_de', 'description', 'description_en', 'description_de', 'type', 'status', 'published_at', 'unpublished_at', 'sort_order', 'is_published'],
         PublicSiteSetting::class => ['public_summary', 'public_summary_en', 'public_summary_de', 'poster_asset_id', 'contact', 'official_links'],
-        DonationSetting::class => ['title', 'goal_description', 'bank_details', 'payment_url', 'additional_methods', 'contact', 'image_asset_id', 'qr_asset_id', 'is_visible'],
+        DonationSetting::class => ['title', 'title_en', 'title_de', 'goal_description', 'goal_description_en', 'goal_description_de', 'bank_details', 'payment_url', 'additional_methods', 'additional_methods_en', 'additional_methods_de', 'contact', 'image_asset_id', 'qr_asset_id', 'is_visible'],
     ];
 
     public function index(Request $request): View
