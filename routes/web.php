@@ -76,6 +76,7 @@ Route::middleware(['auth', 'active'])->prefix('workspace')->group(function () {
     Route::get('/publications', [PublicationController::class, 'index'])->name('publications.index');
     Route::post('/publications', [PublicationController::class, 'store'])->name('publications.store');
     Route::put('/publications/site', [PublicationController::class, 'updateSite'])->name('publications.site');
+    Route::post('/publications/site/poster', [PublicationController::class, 'uploadPoster'])->name('publications.poster');
     Route::put('/publications/donations', [PublicationController::class, 'updateDonation'])->name('publications.donations');
     Route::put('/publications/{publication}', [PublicationController::class, 'update'])->name('publications.update');
 

@@ -326,8 +326,7 @@ class FilmProductionTest extends TestCase
         Storage::fake('local');
         [$user, $project] = $this->baseData();
 
-        $this->actingAs($user)->put(route('publications.site'), [
-            'public_summary' => 'Описание фильма',
+        $this->actingAs($user)->post(route('publications.poster'), [
             'poster_file' => UploadedFile::fake()->image('poster.jpg', 1200, 1800),
         ])->assertRedirect();
 

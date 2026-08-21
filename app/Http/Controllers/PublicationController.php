@@ -11,6 +11,7 @@ use App\Services\ActivityLogger;
 use App\Services\AssetStorageService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -22,7 +23,9 @@ class PublicationController extends Controller
     {
         $project = Project::firstOrFail();
 
-        return view('publications.index', ['publications' => Publication::with(['assets', 'author'])->latest()->get(), 'assets' => Asset::whereNotNull('file_path')->latest()->get(), 'siteSettings' => PublicSiteSetting::firstOrCreate(['project_id' => $project->id]), 'donation' => DonationSetting::firstOrCreate(['project_id' => $project->id])]);
+        $posterUploadMaxBytes = min(25 * 1024 * 1024, UploadedFile::getMaxFilesize(), config('production.max_upload_kb') * 1024);
+
+        return view('publications.index', ['publications' => Publication::with(['assets', 'author'])->latest()->get(), 'assets' => Asset::whereNotNull('file_path')->latest()->get(), 'siteSettings' => PublicSiteSetting::firstOrCreate(['project_id' => $project->id]), 'donation' => DonationSetting::firstOrCreate(['project_id' => $project->id]), 'posterUploadMaxBytes' => $posterUploadMaxBytes]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -64,28 +67,13 @@ class PublicationController extends Controller
     public function updateSite(Request $request): RedirectResponse
     {
         $project = Project::firstOrFail();
-        $max = min(config('production.max_upload_kb'), 25600);
         $data = $request->validate([
             'public_summary' => ['nullable', 'string'],
             'poster_asset_id' => ['nullable', 'exists:assets,id'],
-            'poster_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', "max:$max"],
             'contact' => ['nullable', 'string', 'max:255'],
             'official_links_text' => ['nullable', 'string'],
         ]);
         $posterId = $data['poster_asset_id'] ?? null;
-        if ($request->hasFile('poster_file')) {
-            $poster = Asset::create(array_merge($this->storage->store($request->file('poster_file')), [
-                'uploaded_by' => $request->user()->id,
-                'title' => 'Афиша фильма «Тихий спутник»',
-                'description' => 'Основная афиша публичной страницы фильма.',
-                'type' => 'Фото',
-                'status' => 'Утверждено',
-                'has_usage_permission' => true,
-                'source' => 'Загружено через оформление публичной страницы',
-            ]));
-            $posterId = $poster->id;
-            ActivityLogger::write('Загрузка афиши', $poster, $poster->title);
-        }
         $links = collect(preg_split('/\r\n|\r|\n/', $data['official_links_text'] ?? ''))->map(fn ($line) => trim($line))->filter(function ($url) {
             $scheme = parse_url($url, PHP_URL_SCHEME);
 
@@ -98,6 +86,37 @@ class PublicationController extends Controller
         ActivityLogger::write('Изменение публичной страницы', $settings, null, $old, $changes);
 
         return back()->with('success', 'Публичная страница обновлена.');
+    }
+
+    public function uploadPoster(Request $request): RedirectResponse
+    {
+        $maxKb = max(1, (int) floor(min(25 * 1024 * 1024, UploadedFile::getMaxFilesize(), config('production.max_upload_kb') * 1024) / 1024));
+        $data = $request->validate([
+            'poster_file' => ['required', 'file', 'image', 'mimes:jpg,jpeg,png,webp', "max:$maxKb"],
+        ], [
+            'poster_file.required' => 'Выберите файл афиши.',
+            'poster_file.uploaded' => 'Сервер отклонил файл из-за ограничения PHP. Уменьшите файл или увеличьте upload_max_filesize и post_max_size в настройках PHP 8.4.',
+            'poster_file.image' => 'Афиша должна быть изображением.',
+            'poster_file.mimes' => 'Допустимы только JPG, PNG и WEBP.',
+            'poster_file.max' => 'Файл больше фактического лимита сервера.',
+        ]);
+
+        $project = Project::firstOrFail();
+        $poster = Asset::create(array_merge($this->storage->store($data['poster_file']), [
+            'uploaded_by' => $request->user()->id,
+            'title' => 'Афиша фильма «Тихий спутник»',
+            'description' => 'Основная афиша публичной страницы фильма.',
+            'type' => 'Фото',
+            'status' => 'Утверждено',
+            'has_usage_permission' => true,
+            'source' => 'Загружено через оформление публичной страницы',
+        ]));
+        $settings = PublicSiteSetting::firstOrCreate(['project_id' => $project->id]);
+        $old = ['poster_asset_id' => $settings->poster_asset_id];
+        $settings->update(['poster_asset_id' => $poster->id]);
+        ActivityLogger::write('Загрузка и установка афиши', $settings, $poster->title, $old, ['poster_asset_id' => $poster->id]);
+
+        return redirect()->route('publications.index', ['tab' => 'site'])->with('success', 'Афиша загружена и установлена на главной странице.');
     }
 
     public function updateDonation(Request $request): RedirectResponse
