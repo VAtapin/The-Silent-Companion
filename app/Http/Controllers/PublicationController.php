@@ -285,9 +285,18 @@ class PublicationController extends Controller
             if (! is_array($payload[$locale] ?? null) || ! is_string($payload[$locale]['title'] ?? null) || ! is_string($payload[$locale]['description'] ?? null)) {
                 throw new OpenAiException('OpenAI вернул перевод в неверном формате. Повторите запрос.');
             }
+            $payload[$locale]['title'] = $this->normalizeAiLineBreaks($payload[$locale]['title']);
+            $payload[$locale]['description'] = $this->normalizeAiLineBreaks($payload[$locale]['description']);
         }
 
         return $payload;
+    }
+
+    private function normalizeAiLineBreaks(string $value): string
+    {
+        $value = str_replace(['\\\\r\\\\n', '\\\\n', '\\\\r', '\\r\\n', '\\n', '\\r'], "\n", $value);
+
+        return str_replace(["\r\n", "\r"], "\n", $value);
     }
 
     private function pickerAsset(Asset $asset): array

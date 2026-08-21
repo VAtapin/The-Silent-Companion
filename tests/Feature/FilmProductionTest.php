@@ -451,7 +451,7 @@ class FilmProductionTest extends TestCase
         [$user] = $this->baseData();
         $this->configureOpenAi();
         $publication = Publication::create(['author_id' => $user->id, 'title' => 'Первый тизер', 'description' => 'История о человеке и собаке.', 'type' => 'Новость', 'status' => 'Черновик']);
-        $translation = json_encode(['en' => ['title' => 'First teaser', 'description' => 'A story about a man and a dog.'], 'de' => ['title' => 'Erster Teaser', 'description' => 'Eine Geschichte über einen Mann und einen Hund.']], JSON_UNESCAPED_UNICODE);
+        $translation = json_encode(['en' => ['title' => 'First teaser', 'description' => 'First paragraph\\r\\n\\r\\nSecond paragraph'], 'de' => ['title' => 'Erster Teaser', 'description' => 'Erster Absatz\\r\\n\\r\\nZweiter Absatz']], JSON_UNESCAPED_UNICODE);
         Http::fake(['api.openai.com/v1/responses' => Http::response(['id' => 'resp_translation', 'output' => [['type' => 'message', 'content' => [['type' => 'output_text', 'text' => $translation]]]], 'usage' => ['input_tokens' => 120, 'output_tokens' => 80]], 200)]);
 
         $this->actingAs($user)->post(route('publications.translate', $publication))->assertRedirect()->assertSessionHas('success');
@@ -459,8 +459,23 @@ class FilmProductionTest extends TestCase
         $publication->refresh();
         $this->assertSame('First teaser', $publication->title_en);
         $this->assertSame('Erster Teaser', $publication->title_de);
+        $this->assertSame("First paragraph\n\nSecond paragraph", $publication->description_en);
+        $this->assertSame("Erster Absatz\n\nZweiter Absatz", $publication->description_de);
+        $this->assertStringNotContainsString('\\r\\n', $publication->description_de);
         $this->assertDatabaseHas('ai_requests', ['subject_type' => Publication::class, 'subject_id' => $publication->id, 'action' => 'translate_publication', 'status' => 'Завершён']);
         $this->assertDatabaseHas('ai_usage_records', ['usage_type' => 'Текст', 'input_tokens' => 120, 'output_tokens' => 80]);
+    }
+
+    public function test_existing_publication_translations_with_literal_line_breaks_are_repaired(): void
+    {
+        [$user] = $this->baseData();
+        $publication = Publication::create(['author_id' => $user->id, 'title' => 'Публикация', 'type' => 'Новость', 'status' => 'Черновик', 'description_en' => 'One\\r\\n\\r\\nTwo', 'description_de' => 'Eins\\n\\nZwei']);
+
+        $migration = require database_path('migrations/2026_08_21_000003_normalize_publication_translation_line_breaks.php');
+        $migration->up();
+
+        $this->assertSame("One\n\nTwo", $publication->fresh()->description_en);
+        $this->assertSame("Eins\n\nZwei", $publication->fresh()->description_de);
     }
 
     public function test_photo_can_be_uploaded_directly_with_publication(): void
