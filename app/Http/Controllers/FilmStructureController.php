@@ -22,7 +22,7 @@ class FilmStructureController extends Controller
     public function index(): View
     {
         return view('structure.index', [
-            'project' => Project::with(['acts.scenes.location', 'acts.scenes.shots'])->firstOrFail(),
+            'project' => Project::with(['acts.scenes.location', 'acts.scenes.characters', 'acts.scenes.props', 'acts.scenes.shots'])->firstOrFail(),
             'locations' => Location::orderBy('name')->get(),
             'characters' => Character::orderBy('name')->get(),
             'props' => Prop::orderBy('name')->get(),
@@ -87,9 +87,45 @@ class FilmStructureController extends Controller
     {
         $model = $this->model($type, $id);
         abort_if($model->status === 'Финал', 423, 'Объект в статусе «Финал». Сначала снимите защиту.');
-        $data = $request->validate(['title' => ['sometimes', 'required', 'string', 'max:255'], 'description' => ['sometimes', 'required', 'string'], 'status' => ['required', 'string', 'max:80']]);
+        $data = match ($type) {
+            'act' => $request->validate([
+                'number' => ['sometimes', 'required', 'integer', 'min:1', Rule::unique('acts')->where('project_id', $model->project_id)->ignore($model->id)],
+                'title' => ['sometimes', 'required', 'string', 'max:255'], 'description' => ['sometimes', 'nullable', 'string'],
+                'planned_duration_seconds' => ['sometimes', 'nullable', 'integer', 'min:0'], 'sort_order' => ['sometimes', 'nullable', 'integer', 'min:0'],
+                'status' => ['required', 'string', 'max:80'],
+            ]),
+            'scene' => $request->validate([
+                'act_id' => ['sometimes', 'required', 'exists:acts,id'], 'code' => ['sometimes', 'required', 'string', 'max:50', Rule::unique('scenes', 'code')->ignore($model->id)],
+                'number' => ['sometimes', 'required', 'integer', 'min:1'], 'title' => ['sometimes', 'required', 'string', 'max:255'],
+                'action_description' => ['sometimes', 'nullable', 'string'], 'location_id' => ['sometimes', 'nullable', 'exists:locations,id'],
+                'time_of_day' => ['sometimes', 'nullable', 'string', 'max:100'], 'weather' => ['sometimes', 'nullable', 'string', 'max:150'],
+                'dialogue' => ['sometimes', 'nullable', 'string'], 'sounds' => ['sometimes', 'nullable', 'string'],
+                'planned_duration_seconds' => ['sometimes', 'nullable', 'integer', 'min:0'], 'status' => ['required', 'string', 'max:80'],
+                'assignee_id' => ['sometimes', 'nullable', 'exists:users,id'], 'character_ids' => ['sometimes', 'array'], 'character_ids.*' => ['exists:characters,id'],
+                'prop_ids' => ['sometimes', 'array'], 'prop_ids.*' => ['exists:props,id'],
+            ]),
+            'shot' => $request->validate([
+                'scene_id' => ['sometimes', 'required', 'exists:scenes,id'], 'code' => ['sometimes', 'required', 'string', 'max:50', Rule::unique('shots', 'code')->ignore($model->id)],
+                'number' => ['sometimes', 'required', 'integer', 'min:1'], 'description' => ['sometimes', 'required', 'string'],
+                'hero_action' => ['sometimes', 'nullable', 'string'], 'dog_action' => ['sometimes', 'nullable', 'string'], 'shot_size' => ['sometimes', 'nullable', 'string', 'max:100'],
+                'camera_position' => ['sometimes', 'nullable', 'string'], 'camera_movement' => ['sometimes', 'nullable', 'string'], 'lens' => ['sometimes', 'nullable', 'string'],
+                'planned_duration_seconds' => ['sometimes', 'nullable', 'integer', 'min:0'], 'sound' => ['sometimes', 'nullable', 'string'], 'dialogue' => ['sometimes', 'nullable', 'string'],
+                'creation_method' => ['sometimes', 'nullable', 'string', 'max:120'], 'prompt' => ['sometimes', 'nullable', 'string'],
+                'status' => ['required', 'string', 'max:80'],
+            ]),
+        };
+        $relations = collect($data)->only(['character_ids', 'prop_ids']);
+        $data = collect($data)->except(['character_ids', 'prop_ids'])->all();
         $old = $model->only(array_keys($data));
         $model->update($data);
+        if ($model instanceof Scene) {
+            if ($relations->has('character_ids')) {
+                $model->characters()->sync($relations->get('character_ids'));
+            }
+            if ($relations->has('prop_ids')) {
+                $model->props()->sync($relations->get('prop_ids'));
+            }
+        }
         ActivityLogger::write('Изменение производственного объекта', $model, null, $old, $data);
 
         return back()->with('success', 'Изменения сохранены.');

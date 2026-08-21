@@ -6,7 +6,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body>
-<div x-data="{ nav: false }" class="min-h-screen lg:grid lg:grid-cols-[260px_1fr]">
+<div x-data="{ nav: false, help: false }" class="min-h-screen lg:grid lg:grid-cols-[260px_1fr]">
     <header class="sticky top-0 z-30 flex items-center justify-between bg-ink-950 px-4 py-3 text-white lg:hidden"><a href="{{ route('dashboard') }}" class="font-semibold">Тихий спутник</a><button type="button" @click="nav = !nav" class="rounded-lg border border-white/20 px-3 py-1.5">Меню</button></header>
     <aside :class="nav ? 'block' : 'hidden'" class="fixed inset-x-0 top-[52px] z-20 h-[calc(100vh-52px)] overflow-y-auto bg-ink-950 p-5 lg:sticky lg:top-0 lg:block lg:h-screen">
         <div class="mb-8 hidden lg:block"><p class="text-xs uppercase tracking-[0.26em] text-amber-400">Производство фильма</p><p class="mt-2 text-xl font-semibold text-white">Тихий спутник</p><p class="mt-1 text-xs text-mist-200/70">The Silent Companion</p></div>
@@ -22,6 +22,8 @@
                 ['catalog.index', __('ui.nav.characters'), null, ['characters']],
                 ['catalog.index', __('ui.nav.locations'), null, ['locations']],
                 ['catalog.index', __('ui.nav.props'), null, ['props']],
+                ['ai.index', __('ui.nav.ai'), 'ai.*'],
+                ['help.index', 'Помощь', 'help.*'],
             ],
             'Сайт и публикации' => [
                 ['publications.index', __('ui.nav.publications'), 'publications.*'],
@@ -31,7 +33,6 @@
                 ['team.index', __('ui.nav.team'), 'team.*'],
             ],
             'Система' => [
-                ['ai.index', __('ui.nav.ai'), 'ai.*'],
                 ['activity.index', __('ui.nav.activity'), 'activity.*'],
             ],
         ])
@@ -56,5 +57,6 @@
         @if($errors->any())<div class="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"><p class="font-semibold">{{ __('ui.check_data') }}</p><ul class="mt-1 list-disc pl-5">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
         @yield('content')
     </main>
+    <x-workspace-help />
 </div>
 </body></html>

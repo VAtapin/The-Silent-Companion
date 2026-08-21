@@ -38,6 +38,7 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware(['auth', 'active'])->prefix('workspace')->group(function () {
     Route::get('/', DashboardController::class)->name('dashboard');
+    Route::view('/help', 'help.index')->name('help.index');
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
 
     Route::get('/project', [ProjectController::class, 'show'])->name('project.show');

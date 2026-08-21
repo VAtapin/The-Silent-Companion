@@ -16,6 +16,7 @@ use App\Models\Project;
 use App\Models\Publication;
 use App\Models\PublicSiteSetting;
 use App\Models\Scene;
+use App\Models\Shot;
 use App\Models\User;
 use App\Services\ChecklistProgressService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -218,6 +219,55 @@ class FilmProductionTest extends TestCase
         $scene = Scene::firstOrFail();
         $this->actingAs($user)->post(route('shots.store'), ['scene_id' => $scene->id, 'code' => 'A1-S01-K01', 'number' => 1, 'description' => 'Миска и корм', 'status' => 'Черновик'])->assertRedirect();
         $this->assertDatabaseHas('shots', ['scene_id' => $scene->id, 'code' => 'A1-S01-K01']);
+    }
+
+    public function test_structure_suggests_next_shot_code_and_existing_scene_and_shot_can_be_edited(): void
+    {
+        [$user, $project] = $this->baseData();
+        $act = Act::create(['project_id' => $project->id, 'number' => 1, 'title' => 'Ритуал', 'sort_order' => 1, 'status' => 'Черновик']);
+        $scene = Scene::create(['act_id' => $act->id, 'code' => 'A1-S01', 'number' => 1, 'title' => 'Чёрный экран', 'action_description' => 'Старое действие', 'status' => 'Черновик']);
+        $shot = Shot::create(['scene_id' => $scene->id, 'code' => 'A1-S01-K01', 'number' => 1, 'description' => 'Старый кадр', 'status' => 'Черновик']);
+
+        $this->actingAs($user)->get(route('structure.index'))->assertOk()
+            ->assertSee('A1-S01-K02')
+            ->assertSee('Код и номер рассчитаны автоматически')
+            ->assertSee('Изменить сцену')
+            ->assertSee('Существующие элементы редактируются слева');
+
+        $this->put(route('structure.update', ['scene', $scene]), ['action_description' => 'Новое действие сцены', 'status' => 'В работе'])->assertRedirect();
+        $this->put(route('structure.update', ['shot', $shot]), ['description' => 'Новое описание кадра', 'status' => 'На проверке'])->assertRedirect();
+
+        $this->assertSame('Новое действие сцены', $scene->fresh()->action_description);
+        $this->assertSame('Новое описание кадра', $shot->fresh()->description);
+    }
+
+    public function test_ai_assistant_preselects_scene_or_shot_and_loads_its_source_text(): void
+    {
+        [$user, $project] = $this->baseData();
+        $act = Act::create(['project_id' => $project->id, 'number' => 1, 'title' => 'Ритуал', 'sort_order' => 1, 'status' => 'Черновик']);
+        $scene = Scene::create(['act_id' => $act->id, 'code' => 'A1-S01', 'number' => 1, 'title' => 'Чёрный экран', 'action_description' => 'Уникальный текст выбранной сцены', 'status' => 'Черновик']);
+        $shot = Shot::create(['scene_id' => $scene->id, 'code' => 'A1-S01-K01', 'number' => 1, 'description' => 'Уникальный текст выбранного кадра', 'status' => 'Черновик']);
+
+        $this->actingAs($user)->get(route('ai.index', ['scene' => $scene->id]))->assertOk()
+            ->assertSee('Уникальный текст выбранной сцены')
+            ->assertSee('Что анализируем')
+            ->assertSee('x-model="sourceText"', false);
+        $this->get(route('ai.index', ['shot' => $shot->id]))->assertOk()
+            ->assertSee('Уникальный текст выбранного кадра')
+            ->assertSee('A1-S01-K01');
+    }
+
+    public function test_workspace_has_context_help_and_full_guide_under_preparation(): void
+    {
+        [$user] = $this->baseData();
+
+        $this->actingAs($user)->get(route('help.index'))->assertOk()
+            ->assertSee('Как устроена рабочая зона')
+            ->assertSee('A2-S06-K03')
+            ->assertSee('ИИ-помощник');
+        $this->get(route('dashboard'))->assertOk()
+            ->assertSee('Открыть помощь')
+            ->assertSeeInOrder(['Подготовка съёмок', 'ИИ-помощник', 'Помощь', 'Сайт и публикации']);
     }
 
     public function test_all_active_users_have_equal_write_access(): void

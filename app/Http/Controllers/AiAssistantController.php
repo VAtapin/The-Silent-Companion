@@ -34,11 +34,27 @@ class AiAssistantController extends Controller
 
     public function __construct(private readonly OpenAiService $openai, private readonly OpenAiBudgetService $budget, private readonly AiContextBuilder $context, private readonly AssetStorageService $assetStorage) {}
 
-    public function index(): View
+    public function index(Request $request): View
     {
         $month = [now()->startOfMonth(), now()->endOfMonth()];
+        $project = Project::firstOrFail();
+        $documents = Document::orderBy('title')->get();
+        $scenes = Scene::with('assets')->orderBy('code')->get();
+        $shots = Shot::with(['scene', 'assets'])->orderBy('code')->get();
+        $targets = [
+            'document' => $documents->mapWithKeys(fn (Document $item) => [(string) $item->id => ['label' => $item->title, 'fields' => ['content' => (string) $item->content]]]),
+            'project' => [(string) $project->id => ['label' => $project->title_ru, 'fields' => ['logline' => (string) $project->logline, 'synopsis' => (string) $project->synopsis, 'visual_principle' => (string) $project->visual_principle, 'sound_principle' => (string) $project->sound_principle]]],
+            'scene' => $scenes->mapWithKeys(fn (Scene $item) => [(string) $item->id => ['label' => $item->code.' — '.$item->title, 'scene_id' => $item->id, 'asset_ids' => $item->assets->pluck('id')->all(), 'fields' => ['action_description' => (string) $item->action_description, 'dialogue' => (string) $item->dialogue, 'sounds' => (string) $item->sounds, 'notes' => (string) $item->notes]]]),
+            'shot' => $shots->mapWithKeys(fn (Shot $item) => [(string) $item->id => ['label' => $item->code, 'scene_id' => $item->scene_id, 'shot_id' => $item->id, 'asset_ids' => $item->assets->pluck('id')->all(), 'fields' => ['description' => (string) $item->description, 'prompt' => (string) $item->prompt, 'negative_prompt' => (string) $item->negative_prompt, 'camera_movement' => (string) $item->camera_movement, 'sound' => (string) $item->sound, 'dialogue' => (string) $item->dialogue]]]),
+        ];
+        $initial = ['type' => '', 'id' => '', 'field' => '', 'source' => '', 'scene_ids' => [], 'shot_ids' => [], 'asset_ids' => []];
+        if (($scene = $scenes->firstWhere('id', $request->integer('scene')))) {
+            $initial = ['type' => 'scene', 'id' => (string) $scene->id, 'field' => 'action_description', 'source' => (string) $scene->action_description, 'scene_ids' => [$scene->id], 'shot_ids' => [], 'asset_ids' => $scene->assets->pluck('id')->all()];
+        } elseif (($shot = $shots->firstWhere('id', $request->integer('shot')))) {
+            $initial = ['type' => 'shot', 'id' => (string) $shot->id, 'field' => 'description', 'source' => (string) $shot->description, 'scene_ids' => [$shot->scene_id], 'shot_ids' => [$shot->id], 'asset_ids' => $shot->assets->pluck('id')->all()];
+        }
 
-        return view('ai.index', ['actions' => self::ACTIONS, 'documents' => Document::orderBy('title')->get(), 'scenes' => Scene::orderBy('code')->get(), 'shots' => Shot::orderBy('code')->get(), 'assets' => Asset::latest()->limit(100)->get(), 'characters' => Character::orderBy('name')->get(), 'locations' => Location::orderBy('name')->get(), 'checklistItems' => ChecklistItem::orderBy('title')->get(), 'requests' => AiRequest::where('user_id', auth()->id())->with('generatedAssets.asset')->latest()->limit(30)->get(), 'usage' => ['today' => (float) AiUsageRecord::whereDate('usage_date', today())->sum('cost'), 'month' => (float) AiUsageRecord::whereBetween('usage_date', $month)->sum('cost'), 'text' => AiUsageRecord::where('usage_type', 'Текст')->whereBetween('usage_date', $month)->count(), 'images' => (int) AiUsageRecord::whereBetween('usage_date', $month)->sum('images'), 'errors' => AiRequest::where('status', 'Ошибка')->whereBetween('created_at', $month)->count()]]);
+        return view('ai.index', ['actions' => self::ACTIONS, 'documents' => $documents, 'scenes' => $scenes, 'shots' => $shots, 'targets' => $targets, 'initial' => $initial, 'assets' => Asset::latest()->limit(100)->get(), 'characters' => Character::orderBy('name')->get(), 'locations' => Location::orderBy('name')->get(), 'checklistItems' => ChecklistItem::orderBy('title')->get(), 'requests' => AiRequest::where('user_id', auth()->id())->with('generatedAssets.asset')->latest()->limit(30)->get(), 'usage' => ['today' => (float) AiUsageRecord::whereDate('usage_date', today())->sum('cost'), 'month' => (float) AiUsageRecord::whereBetween('usage_date', $month)->sum('cost'), 'text' => AiUsageRecord::where('usage_type', 'Текст')->whereBetween('usage_date', $month)->count(), 'images' => (int) AiUsageRecord::whereBetween('usage_date', $month)->sum('images'), 'errors' => AiRequest::where('status', 'Ошибка')->whereBetween('created_at', $month)->count()]]);
     }
 
     public function text(Request $request): RedirectResponse
