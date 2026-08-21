@@ -457,6 +457,7 @@ class FilmProductionTest extends TestCase
         [$user] = $this->baseData();
         $this->actingAs($user)->withSession(['locale' => 'de'])->get(route('dashboard'))->assertOk()
             ->assertSee('<html lang="ru">', false)
+            ->assertSeeInOrder(['Фильм', 'Подготовка съёмок', 'Сайт и публикации', 'Команда', 'Система'])
             ->assertSee('История изменений')
             ->assertDontSee('Language / Sprache / Язык');
     }
