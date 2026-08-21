@@ -68,4 +68,73 @@ Alpine.data('posterUpload', (maxBytes) => ({
     },
 }));
 
+Alpine.data('mediaPicker', ({endpoint, initial = []}) => ({
+    open: false,
+    loading: false,
+    loaded: false,
+    error: '',
+    search: '',
+    type: '',
+    status: '',
+    page: 1,
+    lastPage: 1,
+    total: 0,
+    items: [],
+    selected: initial,
+    requestNumber: 0,
+
+    async show() {
+        this.open = true;
+        if (!this.loaded) await this.load(true);
+    },
+
+    async load(reset = false) {
+        if (reset) {
+            this.page = 1;
+            this.items = [];
+        }
+        const requestNumber = ++this.requestNumber;
+        this.loading = true;
+        this.error = '';
+        const parameters = new URLSearchParams({page: this.page});
+        if (this.search.trim()) parameters.set('search', this.search.trim());
+        if (this.type) parameters.set('type', this.type);
+        if (this.status) parameters.set('status', this.status);
+
+        try {
+            const response = await fetch(`${endpoint}?${parameters}`, {headers: {'Accept': 'application/json'}});
+            if (!response.ok) throw new Error('Не удалось загрузить медиатеку.');
+            const result = await response.json();
+            if (requestNumber !== this.requestNumber) return;
+            this.items = reset ? result.data : [...this.items, ...result.data];
+            this.page = result.page;
+            this.lastPage = result.last_page;
+            this.total = result.total;
+            this.loaded = true;
+        } catch (error) {
+            if (requestNumber === this.requestNumber) this.error = error.message || 'Не удалось загрузить медиатеку.';
+        } finally {
+            if (requestNumber === this.requestNumber) this.loading = false;
+        }
+    },
+
+    async more() {
+        if (this.loading || this.page >= this.lastPage) return;
+        this.page += 1;
+        await this.load(false);
+    },
+
+    isSelected(id) {
+        return this.selected.some((asset) => asset.id === id);
+    },
+
+    toggle(asset) {
+        this.isSelected(asset.id) ? this.remove(asset.id) : this.selected.push(asset);
+    },
+
+    remove(id) {
+        this.selected = this.selected.filter((asset) => asset.id !== id);
+    },
+}));
+
 Alpine.start();

@@ -118,6 +118,23 @@ class AssetController extends Controller
         return Storage::disk($asset->disk)->response($asset->file_path, $asset->original_name, ['Cache-Control' => 'private, no-store']);
     }
 
+    public function thumbnail(Asset $asset): StreamedResponse
+    {
+        $path = $asset->thumbnail_path;
+        if ((! $path || ! Storage::disk($asset->disk)->exists($path)) && $asset->file_path && Storage::disk($asset->disk)->exists($asset->file_path)) {
+            $path = $this->storage->createThumbnail($asset->disk, $asset->file_path, $asset->mime_type);
+            if ($path) {
+                $asset->updateQuietly(['thumbnail_path' => $path]);
+            }
+        }
+        if (! $path || ! Storage::disk($asset->disk)->exists($path)) {
+            $path = $asset->file_path;
+        }
+        abort_unless($path && Storage::disk($asset->disk)->exists($path), 404);
+
+        return Storage::disk($asset->disk)->response($path, 'preview.jpg', ['Cache-Control' => 'private, max-age=86400']);
+    }
+
     private function syncLinks(Asset $asset, array $data): void
     {
         $map = ['characters' => 'character_ids', 'locations' => 'location_ids', 'props' => 'prop_ids', 'acts' => 'act_ids', 'scenes' => 'scene_ids', 'shots' => 'shot_ids', 'checklistItems' => 'checklist_item_ids'];

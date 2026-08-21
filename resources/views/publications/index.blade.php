@@ -36,7 +36,7 @@
                         <input type="hidden" name="status" value="{{ $publication->status }}">
                         <input type="hidden" name="published_at" value="{{ $publication->published_at?->format('Y-m-d\TH:i') }}">
                         <div class="rounded-xl border border-mist-200 bg-white p-4"><h3>Добавить новый материал</h3><div class="mt-3 grid gap-4 md:grid-cols-2"><div><label>Фото или видео с компьютера</label><input type="file" name="media_file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"><p class="mt-1 text-xs text-slate-500">Лимит сервера: {{ number_format($serverUploadMaxBytes / 1048576, 1, ',', ' ') }} МБ</p></div><div><label>Или ссылка YouTube</label><input type="url" name="youtube_url" placeholder="https://www.youtube.com/watch?v=..."></div></div></div>
-                        <div><label>Выбрать из медиатеки</label>@include('publications._asset-picker', ['selectedIds' => $publication->assets->pluck('id')->all()])</div>
+                        <div><label>Выбрать из медиатеки</label>@include('publications._asset-picker', ['selectedAssets' => $publication->assets])</div>
                         <button class="btn-primary">Сохранить изменения</button>
                     </form>
                 </article>
@@ -53,7 +53,7 @@
                 <details class="rounded-xl border border-mist-200 bg-mist-50 p-4"><summary class="cursor-pointer font-semibold">Переводы EN / DE</summary><div class="mt-4 space-y-4"><div><label>Title (EN)</label><input name="title_en"></div><div><label>Description (EN)</label><textarea name="description_en"></textarea></div><div><label>Titel (DE)</label><input name="title_de"></div><div><label>Beschreibung (DE)</label><textarea name="description_de"></textarea></div></div></details>
                 <div><label>Тип</label><select name="type"><option>Фото</option><option>Видео</option><option>Новость</option><option>Афиша</option></select></div>
                 <div class="rounded-xl border border-amber-400/50 bg-amber-50 p-4"><h3>Добавить новый материал</h3><div class="mt-3 space-y-4"><div><label>Загрузить фото или видео</label><input type="file" name="media_file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"><p class="mt-1 text-xs text-slate-500">JPG, PNG, WEBP, MP4, MOV или WEBM · лимит {{ number_format($serverUploadMaxBytes / 1048576, 1, ',', ' ') }} МБ</p></div><div><label>Или вставить ссылку YouTube</label><input type="url" name="youtube_url" placeholder="https://youtu.be/... или https://www.youtube.com/watch?v=..."></div></div></div>
-                <div><label>Или выбрать из медиатеки</label><div class="max-h-[34rem] overflow-y-auto pr-1">@include('publications._asset-picker', ['selectedIds' => old('asset_ids', [])])</div></div>
+                <div><label>Или выбрать из медиатеки</label>@include('publications._asset-picker', ['selectedAssets' => $assets->whereIn('id', old('asset_ids', []))])</div>
                 <input type="hidden" name="sort_order" value="0">
                 <div class="grid gap-2"><button name="publish_action" value="publish" class="btn-primary w-full">Создать и опубликовать</button><button name="publish_action" value="draft" class="btn-secondary w-full">Сохранить как черновик</button></div>
             </form>

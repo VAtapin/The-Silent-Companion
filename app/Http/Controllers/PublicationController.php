@@ -16,6 +16,7 @@ use App\Services\ActivityLogger;
 use App\Services\AssetStorageService;
 use App\Services\OpenAiBudgetService;
 use App\Services\OpenAiService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -38,7 +39,31 @@ class PublicationController extends Controller
         $serverUploadMaxBytes = min(UploadedFile::getMaxFilesize(), config('production.max_upload_kb') * 1024);
         $posterUploadMaxBytes = min(25 * 1024 * 1024, $serverUploadMaxBytes);
 
-        return view('publications.index', ['publications' => Publication::with(['assets', 'author'])->latest()->get(), 'assets' => Asset::where(fn ($query) => $query->whereNotNull('file_path')->orWhereNotNull('external_url'))->latest()->get(), 'siteSettings' => PublicSiteSetting::firstOrCreate(['project_id' => $project->id]), 'donation' => DonationSetting::firstOrCreate(['project_id' => $project->id]), 'posterUploadMaxBytes' => $posterUploadMaxBytes, 'serverUploadMaxBytes' => $serverUploadMaxBytes]);
+        return view('publications.index', ['publications' => Publication::with(['assets', 'author'])->latest()->get(), 'assets' => Asset::select(['id', 'title', 'type', 'status', 'mime_type', 'file_path', 'thumbnail_path', 'external_url'])->where(fn ($query) => $query->whereNotNull('file_path')->orWhereNotNull('external_url'))->latest()->get(), 'siteSettings' => PublicSiteSetting::firstOrCreate(['project_id' => $project->id]), 'donation' => DonationSetting::firstOrCreate(['project_id' => $project->id]), 'posterUploadMaxBytes' => $posterUploadMaxBytes, 'serverUploadMaxBytes' => $serverUploadMaxBytes]);
+    }
+
+    public function mediaOptions(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'search' => ['nullable', 'string', 'max:120'],
+            'type' => ['nullable', Rule::in(Asset::TYPES)],
+            'status' => ['nullable', Rule::in(Asset::STATUSES)],
+            'page' => ['nullable', 'integer', 'min:1'],
+        ]);
+        $assets = Asset::query()
+            ->where(fn ($query) => $query->whereNotNull('file_path')->orWhereNotNull('external_url'))
+            ->when(filled($data['search'] ?? null), fn ($query) => $query->where('title', 'like', '%'.$data['search'].'%'))
+            ->when(filled($data['type'] ?? null), fn ($query) => $query->where('type', $data['type']))
+            ->when(filled($data['status'] ?? null), fn ($query) => $query->where('status', $data['status']))
+            ->latest()
+            ->paginate(24);
+
+        return response()->json([
+            'data' => $assets->getCollection()->map(fn (Asset $asset) => $this->pickerAsset($asset))->values(),
+            'page' => $assets->currentPage(),
+            'last_page' => $assets->lastPage(),
+            'total' => $assets->total(),
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -263,5 +288,21 @@ class PublicationController extends Controller
         }
 
         return $payload;
+    }
+
+    private function pickerAsset(Asset $asset): array
+    {
+        $youtubeId = $asset->youtubeId();
+        $isImage = str_starts_with((string) $asset->mime_type, 'image/');
+        $isVideo = str_starts_with((string) $asset->mime_type, 'video/');
+
+        return [
+            'id' => $asset->id,
+            'title' => $asset->title,
+            'type' => $youtubeId ? 'YouTube' : $asset->type,
+            'status' => $asset->status,
+            'kind' => $youtubeId ? 'youtube' : ($isImage ? 'image' : ($isVideo ? 'video' : 'other')),
+            'thumbnail' => $youtubeId ? "https://i.ytimg.com/vi/{$youtubeId}/hqdefault.jpg" : ($isImage ? route('assets.thumbnail', $asset) : null),
+        ];
     }
 }

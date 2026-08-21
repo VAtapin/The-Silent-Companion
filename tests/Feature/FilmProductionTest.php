@@ -478,6 +478,31 @@ class FilmProductionTest extends TestCase
         $this->assertTrue(Publication::firstOrFail()->assets->contains($asset));
     }
 
+    public function test_publication_media_picker_is_searched_and_loaded_in_pages_of_24(): void
+    {
+        [$user] = $this->baseData();
+        foreach (range(1, 30) as $number) {
+            Asset::create(['uploaded_by' => $user->id, 'title' => 'Материал '.$number, 'type' => $number === 30 ? 'Видео' : 'Фото', 'status' => 'Утверждено', 'file_path' => 'assets/'.$number.'.jpg', 'thumbnail_path' => 'thumbs/'.$number.'.jpg', 'mime_type' => $number === 30 ? 'video/mp4' : 'image/jpeg']);
+        }
+
+        $this->actingAs($user)->getJson(route('publications.media-options'))->assertOk()
+            ->assertJsonCount(24, 'data')
+            ->assertJsonPath('page', 1)
+            ->assertJsonPath('last_page', 2)
+            ->assertJsonPath('total', 30);
+        $this->actingAs($user)->get(route('publications.index'))->assertOk()
+            ->assertSee('Открыть медиатеку')
+            ->assertDontSee(route('assets.preview', Asset::first()), false);
+        $this->actingAs($user)->getJson(route('publications.media-options', ['search' => 'Материал 30', 'type' => 'Видео']))->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.title', 'Материал 30');
+    }
+
+    public function test_publication_media_picker_requires_authentication(): void
+    {
+        $this->get(route('publications.media-options'))->assertRedirect('/login');
+    }
+
     public function test_invalid_youtube_url_is_rejected(): void
     {
         [$user] = $this->baseData();

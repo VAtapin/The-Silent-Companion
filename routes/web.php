@@ -13,7 +13,6 @@ use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\PublicationController;
 use App\Http\Controllers\PublicController;
 use App\Http\Controllers\TeamController;
-use App\Models\Asset;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('locale:ru')->group(function () {
@@ -66,7 +65,7 @@ Route::middleware(['auth', 'active'])->prefix('workspace')->group(function () {
     Route::put('/assets/{asset}/status', [AssetController::class, 'updateStatus'])->name('assets.status');
     Route::get('/assets/{asset}/download', [AssetController::class, 'download'])->name('assets.download');
     Route::get('/assets/{asset}/preview', [AssetController::class, 'preview'])->name('assets.preview');
-    Route::get('/assets/{asset}/thumbnail', fn (Asset $asset, AssetController $controller) => $controller->download($asset, true))->name('assets.thumbnail');
+    Route::get('/assets/{asset}/thumbnail', [AssetController::class, 'thumbnail'])->name('assets.thumbnail');
 
     Route::get('/catalog/{type}', [CatalogController::class, 'index'])->name('catalog.index');
     Route::post('/catalog/{type}', [CatalogController::class, 'store'])->name('catalog.store');
@@ -86,6 +85,7 @@ Route::middleware(['auth', 'active'])->prefix('workspace')->group(function () {
     Route::post('/activity/{activityLog}/restore', [ActivityLogController::class, 'restore'])->name('activity.restore');
 
     Route::get('/publications', [PublicationController::class, 'index'])->name('publications.index');
+    Route::get('/publications/media/options', [PublicationController::class, 'mediaOptions'])->name('publications.media-options');
     Route::post('/publications', [PublicationController::class, 'store'])->name('publications.store');
     Route::put('/publications/site', [PublicationController::class, 'updateSite'])->name('publications.site');
     Route::post('/publications/site/poster', [PublicationController::class, 'uploadPoster'])->name('publications.poster');

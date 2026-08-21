@@ -13,7 +13,7 @@ class AssetStorageService
         $disk = config('production.asset_disk');
         $directory = 'assets/'.now()->format('Y/m');
         $path = $file->store($directory, $disk);
-        $thumbnail = $this->thumbnail($disk, $path, $file->getMimeType());
+        $thumbnail = $this->createThumbnail($disk, $path, $file->getMimeType());
 
         return [
             'disk' => $disk,
@@ -25,7 +25,7 @@ class AssetStorageService
         ];
     }
 
-    private function thumbnail(string $disk, string $path, ?string $mime): ?string
+    public function createThumbnail(string $disk, string $path, ?string $mime): ?string
     {
         if (! $mime || ! str_starts_with($mime, 'image/') || ! function_exists('imagecreatefromstring')) {
             return null;
