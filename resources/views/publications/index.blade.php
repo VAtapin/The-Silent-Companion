@@ -25,14 +25,15 @@
                             <button type="button" @click="edit=!edit" class="btn-secondary">Изменить</button>
                         </div>
                     </div>
-                    <form x-show="edit" x-cloak method="POST" action="{{ route('publications.update',$publication) }}" class="mt-4 space-y-4 rounded-xl bg-mist-50 p-4">
+                    <form x-show="edit" x-cloak method="POST" action="{{ route('publications.update',$publication) }}" enctype="multipart/form-data" class="mt-4 space-y-4 rounded-xl bg-mist-50 p-4">
                         @csrf @method('PUT')
                         <div><label>Заголовок</label><input name="title" value="{{ $publication->title }}" required></div>
                         <div><label>Описание</label><textarea name="description">{{ $publication->description }}</textarea></div>
                         <div class="field-grid"><div><label>Тип</label><input name="type" value="{{ $publication->type }}" required></div><div><label>Порядок</label><input type="number" min="0" name="sort_order" value="{{ $publication->sort_order }}"></div></div>
                         <input type="hidden" name="status" value="{{ $publication->status }}">
                         <input type="hidden" name="published_at" value="{{ $publication->published_at?->format('Y-m-d\TH:i') }}">
-                        <div><label>Прикреплённые материалы</label><div class="grid gap-2 sm:grid-cols-2">@foreach($assets as $asset)<label class="flex cursor-pointer gap-3 rounded-xl border border-mist-200 bg-white p-3"><input class="mt-0.5 h-4 w-4 shrink-0" type="checkbox" name="asset_ids[]" value="{{ $asset->id }}" @checked($publication->assets->contains($asset))><span><b class="block text-sm">{{ $asset->title }}</b><span class="text-xs text-slate-500">{{ $asset->type }} · {{ $asset->status }}</span></span></label>@endforeach</div></div>
+                        <div class="rounded-xl border border-mist-200 bg-white p-4"><h3>Добавить новый материал</h3><div class="mt-3 grid gap-4 md:grid-cols-2"><div><label>Фото или видео с компьютера</label><input type="file" name="media_file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"><p class="mt-1 text-xs text-slate-500">Лимит сервера: {{ number_format($serverUploadMaxBytes / 1048576, 1, ',', ' ') }} МБ</p></div><div><label>Или ссылка YouTube</label><input type="url" name="youtube_url" placeholder="https://www.youtube.com/watch?v=..."></div></div></div>
+                        <div><label>Выбрать из медиатеки</label>@include('publications._asset-picker', ['selectedIds' => $publication->assets->pluck('id')->all()])</div>
                         <button class="btn-primary">Сохранить изменения</button>
                     </form>
                 </article>
@@ -42,12 +43,13 @@
         </div>
         <aside class="card self-start xl:sticky xl:top-7">
             <h2>Новая публикация</h2>
-            <form method="POST" action="{{ route('publications.store') }}" class="mt-4 space-y-4">
+            <form method="POST" action="{{ route('publications.store') }}" enctype="multipart/form-data" class="mt-4 space-y-4">
                 @csrf
                 <div><label>Заголовок</label><input name="title" required></div>
                 <div><label>Описание</label><textarea name="description"></textarea></div>
                 <div><label>Тип</label><select name="type"><option>Фото</option><option>Видео</option><option>Новость</option><option>Афиша</option></select></div>
-                <div><label>Материалы</label><div class="max-h-72 space-y-2 overflow-y-auto">@forelse($assets as $asset)<label class="flex cursor-pointer gap-3 rounded-xl border border-mist-200 p-3"><input class="mt-0.5 h-4 w-4 shrink-0" type="checkbox" name="asset_ids[]" value="{{ $asset->id }}"><span><b class="block text-sm">{{ $asset->title }}</b><span class="text-xs text-slate-500">{{ $asset->type }} · {{ $asset->status }}</span></span></label>@empty<p class="rounded-xl bg-mist-50 p-3 text-sm text-slate-500">Сначала загрузите материал в медиатеку.</p>@endforelse</div></div>
+                <div class="rounded-xl border border-amber-400/50 bg-amber-50 p-4"><h3>Добавить новый материал</h3><div class="mt-3 space-y-4"><div><label>Загрузить фото или видео</label><input type="file" name="media_file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm"><p class="mt-1 text-xs text-slate-500">JPG, PNG, WEBP, MP4, MOV или WEBM · лимит {{ number_format($serverUploadMaxBytes / 1048576, 1, ',', ' ') }} МБ</p></div><div><label>Или вставить ссылку YouTube</label><input type="url" name="youtube_url" placeholder="https://youtu.be/... или https://www.youtube.com/watch?v=..."></div></div></div>
+                <div><label>Или выбрать из медиатеки</label><div class="max-h-[34rem] overflow-y-auto pr-1">@include('publications._asset-picker', ['selectedIds' => old('asset_ids', [])])</div></div>
                 <input type="hidden" name="sort_order" value="0">
                 <div class="grid gap-2"><button name="publish_action" value="publish" class="btn-primary w-full">Создать и опубликовать</button><button name="publish_action" value="draft" class="btn-secondary w-full">Сохранить как черновик</button></div>
             </form>

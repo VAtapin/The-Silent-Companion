@@ -393,6 +393,44 @@ class FilmProductionTest extends TestCase
         $this->assertNull($publication->unpublished_at);
     }
 
+    public function test_youtube_video_can_be_added_and_embedded_from_publication_form(): void
+    {
+        [$user] = $this->baseData();
+
+        $this->actingAs($user)->post(route('publications.store'), [
+            'title' => 'Видео о фильме', 'description' => 'Первый ролик', 'type' => 'Видео',
+            'youtube_url' => 'https://youtu.be/dQw4w9WgXcQ', 'publish_action' => 'publish', 'sort_order' => 0,
+        ])->assertRedirect();
+
+        $asset = Asset::where('external_url', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ')->firstOrFail();
+        $this->assertSame('dQw4w9WgXcQ', $asset->youtubeId());
+        $this->assertTrue(Publication::firstOrFail()->assets->contains($asset));
+        $this->get(route('public.home'))->assertOk()->assertSee('youtube-nocookie.com/embed/dQw4w9WgXcQ', false);
+    }
+
+    public function test_photo_can_be_uploaded_directly_with_publication(): void
+    {
+        Storage::fake('local');
+        [$user] = $this->baseData();
+
+        $this->actingAs($user)->post(route('publications.store'), [
+            'title' => 'Фото со съёмок', 'type' => 'Фото', 'media_file' => UploadedFile::fake()->image('set.jpg'),
+            'publish_action' => 'draft', 'sort_order' => 0,
+        ])->assertRedirect();
+
+        $asset = Asset::where('title', 'Фото со съёмок')->firstOrFail();
+        Storage::disk('local')->assertExists($asset->file_path);
+        $this->assertTrue(Publication::firstOrFail()->assets->contains($asset));
+    }
+
+    public function test_invalid_youtube_url_is_rejected(): void
+    {
+        [$user] = $this->baseData();
+        $this->actingAs($user)->post(route('publications.store'), [
+            'title' => 'Видео', 'type' => 'Видео', 'youtube_url' => 'https://example.com/video', 'publish_action' => 'draft',
+        ])->assertSessionHasErrors('youtube_url');
+    }
+
     public function test_public_home_does_not_disclose_internal_project_data(): void
     {
         [$user,$project] = $this->baseData();

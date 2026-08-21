@@ -82,7 +82,9 @@
                     @foreach($publications as $publication)
                         <article class="overflow-hidden rounded-3xl bg-white shadow-sm">
                             @php($media = $publication->assets->first())
-                            @if($media?->mime_type && str_starts_with($media->mime_type, 'image/'))
+                            @if($media?->youtubeId())
+                                <iframe class="aspect-video w-full bg-black" src="https://www.youtube-nocookie.com/embed/{{ $media->youtubeId() }}?rel=0" title="{{ $publication->title }}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+                            @elseif($media?->mime_type && str_starts_with($media->mime_type, 'image/'))
                                 <img src="{{ route('public.media', $media) }}" alt="{{ $publication->title }}" class="h-64 w-full object-cover">
                             @elseif($media?->mime_type && str_starts_with($media->mime_type, 'video/'))
                                 <video controls preload="metadata" class="h-64 w-full bg-black object-contain">

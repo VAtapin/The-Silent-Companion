@@ -23,9 +23,10 @@ class PublicationController extends Controller
     {
         $project = Project::firstOrFail();
 
-        $posterUploadMaxBytes = min(25 * 1024 * 1024, UploadedFile::getMaxFilesize(), config('production.max_upload_kb') * 1024);
+        $serverUploadMaxBytes = min(UploadedFile::getMaxFilesize(), config('production.max_upload_kb') * 1024);
+        $posterUploadMaxBytes = min(25 * 1024 * 1024, $serverUploadMaxBytes);
 
-        return view('publications.index', ['publications' => Publication::with(['assets', 'author'])->latest()->get(), 'assets' => Asset::whereNotNull('file_path')->latest()->get(), 'siteSettings' => PublicSiteSetting::firstOrCreate(['project_id' => $project->id]), 'donation' => DonationSetting::firstOrCreate(['project_id' => $project->id]), 'posterUploadMaxBytes' => $posterUploadMaxBytes]);
+        return view('publications.index', ['publications' => Publication::with(['assets', 'author'])->latest()->get(), 'assets' => Asset::where(fn ($query) => $query->whereNotNull('file_path')->orWhereNotNull('external_url'))->latest()->get(), 'siteSettings' => PublicSiteSetting::firstOrCreate(['project_id' => $project->id]), 'donation' => DonationSetting::firstOrCreate(['project_id' => $project->id]), 'posterUploadMaxBytes' => $posterUploadMaxBytes, 'serverUploadMaxBytes' => $serverUploadMaxBytes]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -38,8 +39,9 @@ class PublicationController extends Controller
         if ($data['is_published'] && blank($data['published_at'] ?? null)) {
             $data['published_at'] = now();
         }
-        $publication = Publication::create(collect($data)->except('asset_ids')->all());
-        $publication->assets()->sync($data['asset_ids'] ?? []);
+        $assetIds = $this->mediaAssetIds($request, $data);
+        $publication = Publication::create(collect($data)->except(['asset_ids', 'media_file', 'youtube_url', 'publish_action'])->all());
+        $publication->assets()->sync($assetIds);
         ActivityLogger::write('Создание публикации', $publication, $publication->title);
 
         return back()->with('success', 'Публикация создана.');
@@ -57,10 +59,11 @@ class PublicationController extends Controller
         } elseif ($data['is_published']) {
             $data['unpublished_at'] = null;
         }
-        $changes = collect($data)->except('asset_ids')->all();
+        $assetIds = $this->mediaAssetIds($request, $data);
+        $changes = collect($data)->except(['asset_ids', 'media_file', 'youtube_url', 'publish_action'])->all();
         $old = $publication->only(array_keys($changes));
         $publication->update($changes);
-        $publication->assets()->sync($data['asset_ids'] ?? []);
+        $publication->assets()->sync($assetIds);
         ActivityLogger::write('Изменение публикации', $publication, $publication->title, $old, $changes);
 
         return back()->with('success', 'Публикация обновлена.');
@@ -150,6 +153,48 @@ class PublicationController extends Controller
 
     private function validated(Request $request): array
     {
-        return $request->validate(['title' => ['required', 'string', 'max:255'], 'description' => ['nullable', 'string'], 'type' => ['required', 'string', 'max:100'], 'published_at' => ['nullable', 'date'], 'sort_order' => ['nullable', 'integer', 'min:0'], 'status' => ['required', Rule::in(Publication::STATUSES)], 'is_published' => ['nullable', 'boolean'], 'asset_ids' => ['array'], 'asset_ids.*' => ['exists:assets,id']]);
+        $maxKb = max(1, (int) floor(min(UploadedFile::getMaxFilesize(), config('production.max_upload_kb') * 1024) / 1024));
+
+        return $request->validate([
+            'title' => ['required', 'string', 'max:255'], 'description' => ['nullable', 'string'], 'type' => ['required', 'string', 'max:100'],
+            'published_at' => ['nullable', 'date'], 'sort_order' => ['nullable', 'integer', 'min:0'], 'status' => ['required', Rule::in(Publication::STATUSES)],
+            'is_published' => ['nullable', 'boolean'], 'publish_action' => ['nullable', Rule::in(['publish', 'draft'])],
+            'asset_ids' => ['array'], 'asset_ids.*' => ['exists:assets,id'],
+            'media_file' => ['nullable', 'file', "max:$maxKb", 'mimes:jpg,jpeg,png,webp,mp4,mov,webm'],
+            'youtube_url' => ['nullable', 'url', 'max:2000', function (string $attribute, mixed $value, \Closure $fail): void {
+                if ($value && ! Asset::youtubeIdFromUrl((string) $value)) {
+                    $fail('Укажите корректную ссылку YouTube.');
+                }
+            }],
+        ], [
+            'media_file.uploaded' => 'Сервер отклонил файл из-за ограничения upload_max_filesize или post_max_size в PHP 8.4.',
+            'media_file.max' => 'Файл превышает фактический лимит загрузки сервера.',
+            'media_file.mimes' => 'Можно загрузить JPG, PNG, WEBP, MP4, MOV или WEBM.',
+        ]);
+    }
+
+    private function mediaAssetIds(Request $request, array $data): array
+    {
+        $ids = collect($data['asset_ids'] ?? []);
+        if ($request->hasFile('media_file')) {
+            $file = $request->file('media_file');
+            $type = str_starts_with((string) $file->getMimeType(), 'video/') ? 'Видео' : 'Фото';
+            $asset = Asset::create(array_merge($this->storage->store($file), [
+                'uploaded_by' => $request->user()->id, 'title' => $data['title'], 'description' => $data['description'] ?? null,
+                'type' => $type, 'status' => 'Утверждено', 'has_usage_permission' => true, 'source' => 'Загружено при создании публикации',
+            ]));
+            $ids->push($asset->id);
+        }
+        if (filled($data['youtube_url'] ?? null)) {
+            $youtubeId = Asset::youtubeIdFromUrl($data['youtube_url']);
+            $url = "https://www.youtube.com/watch?v={$youtubeId}";
+            $asset = Asset::firstOrCreate(['external_url' => $url], [
+                'uploaded_by' => $request->user()->id, 'title' => $data['title'], 'description' => $data['description'] ?? null,
+                'type' => 'Видео', 'status' => 'Утверждено', 'mime_type' => 'video/youtube', 'has_usage_permission' => true, 'source' => 'YouTube',
+            ]);
+            $ids->push($asset->id);
+        }
+
+        return $ids->filter()->unique()->values()->all();
     }
 }
