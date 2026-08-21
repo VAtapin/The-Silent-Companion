@@ -30,6 +30,8 @@ class PublicationController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $publish = $request->input('publish_action') === 'publish';
+        $request->merge(['status' => $publish ? 'Опубликовано' : 'Черновик', 'is_published' => $publish]);
         $data = $this->validated($request);
         $data['author_id'] = $request->user()->id;
         $data['is_published'] = $request->boolean('is_published');
@@ -46,7 +48,7 @@ class PublicationController extends Controller
     public function update(Request $request, Publication $publication): RedirectResponse
     {
         $data = $this->validated($request);
-        $data['is_published'] = $request->boolean('is_published');
+        $data['is_published'] = $request->has('is_published') ? $request->boolean('is_published') : $publication->is_published;
         if ($data['is_published'] && blank($data['published_at'] ?? null)) {
             $data['published_at'] = now();
         }
@@ -62,6 +64,20 @@ class PublicationController extends Controller
         ActivityLogger::write('Изменение публикации', $publication, $publication->title, $old, $changes);
 
         return back()->with('success', 'Публикация обновлена.');
+    }
+
+    public function visibility(Request $request, Publication $publication): RedirectResponse
+    {
+        $data = $request->validate(['visible' => ['required', 'boolean']]);
+        $visible = (bool) $data['visible'];
+        $old = $publication->only(['status', 'is_published', 'published_at', 'unpublished_at']);
+        $changes = $visible
+            ? ['status' => 'Опубликовано', 'is_published' => true, 'published_at' => $publication->published_at ?: now(), 'unpublished_at' => null]
+            : ['status' => 'Скрыто', 'is_published' => false, 'unpublished_at' => now()];
+        $publication->update($changes);
+        ActivityLogger::write($visible ? 'Публикация показана на сайте' : 'Публикация скрыта с сайта', $publication, $publication->title, $old, $changes);
+
+        return back()->with('success', $visible ? 'Публикация появилась на главной странице.' : 'Публикация скрыта с главной страницы.');
     }
 
     public function updateSite(Request $request): RedirectResponse

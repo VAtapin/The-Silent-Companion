@@ -79,6 +79,7 @@ Route::middleware(['auth', 'active'])->prefix('workspace')->group(function () {
     Route::post('/publications/site/poster', [PublicationController::class, 'uploadPoster'])->name('publications.poster');
     Route::put('/publications/donations', [PublicationController::class, 'updateDonation'])->name('publications.donations');
     Route::put('/publications/{publication}', [PublicationController::class, 'update'])->name('publications.update');
+    Route::post('/publications/{publication}/visibility', [PublicationController::class, 'visibility'])->name('publications.visibility');
 
     Route::middleware('throttle:10,1')->group(function () {
         Route::get('/ai', [AiAssistantController::class, 'index'])->name('ai.index');

@@ -3,8 +3,57 @@
 @section('content')
 <div class="flex flex-col gap-3 md:flex-row md:items-end md:justify-between"><div><p class="text-sm text-amber-500">Ничего не публикуется автоматически</p><h1>Публичная страница</h1></div><a href="{{ route('public.home') }}" target="_blank" class="btn-secondary">Открыть сайт</a></div>
 <div x-data="{tab: @js(request('tab') === 'site' || $errors->has('poster_file') ? 'site' : 'materials')}" class="mt-7"><div class="flex flex-wrap gap-2"><button @click="tab='materials'" :class="tab==='materials'?'bg-ink-900 text-white':'bg-white'" class="rounded-xl px-4 py-2 text-sm">Публикации</button><button @click="tab='site'" :class="tab==='site'?'bg-ink-900 text-white':'bg-white'" class="rounded-xl px-4 py-2 text-sm">Главная страница</button><button @click="tab='donations'" :class="tab==='donations'?'bg-ink-900 text-white':'bg-white'" class="rounded-xl px-4 py-2 text-sm">Пожертвования</button></div>
-<section x-show="tab==='materials'" class="mt-5 grid gap-6 xl:grid-cols-[1.2fr_.8fr]"><div class="space-y-4">@forelse($publications as $publication)<article class="card" x-data="{edit:false}"><div class="flex items-start justify-between gap-3"><div><span class="badge {{ $publication->is_published&&$publication->status==='Опубликовано'?'bg-emerald-100 text-emerald-700':'bg-slate-100 text-slate-600' }}">{{ $publication->status }}</span><h2 class="mt-2">{{ $publication->title }}</h2><p class="mt-2 text-sm text-slate-600">{{ $publication->description }}</p><p class="mt-2 text-xs text-slate-400">Материалов: {{ $publication->assets->count() }} · {{ $publication->author?->name }}</p></div><button @click="edit=!edit" class="text-sm text-amber-700">Изменить</button></div><form x-show="edit" method="POST" action="{{ route('publications.update',$publication) }}" class="mt-4 space-y-3 rounded-xl bg-mist-50 p-4">@csrf @method('PUT')<input name="title" value="{{ $publication->title }}" required><textarea name="description">{{ $publication->description }}</textarea><div class="field-grid"><input name="type" value="{{ $publication->type }}" required><select name="status">@foreach(\App\Models\Publication::STATUSES as $status)<option @selected($status===$publication->status)>{{ $status }}</option>@endforeach</select><input type="datetime-local" name="published_at" value="{{ $publication->published_at?->format('Y-m-d\TH:i') }}"><input type="number" min="0" name="sort_order" value="{{ $publication->sort_order }}"></div><div><label>Материалы</label><select multiple name="asset_ids[]" class="min-h-40">@foreach($assets as $asset)<option value="{{ $asset->id }}" @selected($publication->assets->contains($asset))>{{ $asset->title }} · {{ $asset->status }}</option>@endforeach</select></div><label class="flex gap-2"><input class="h-4 w-4" type="checkbox" name="is_published" value="1" @checked($publication->is_published)><span>Разрешить показ на публичной странице</span></label><button class="btn-primary">Сохранить</button></form></article>@empty<div class="card muted">Публикаций пока нет.</div>@endforelse</div>
-<aside class="card self-start"><h2>Новая публикация</h2><form method="POST" action="{{ route('publications.store') }}" class="mt-4 space-y-3">@csrf<div><label>Заголовок</label><input name="title" required></div><div><label>Описание</label><textarea name="description"></textarea></div><div class="field-grid"><div><label>Тип</label><select name="type"><option>Фото</option><option>Видео</option><option>Новость</option><option>Афиша</option></select></div><div><label>Статус</label><select name="status">@foreach(\App\Models\Publication::STATUSES as $status)<option>{{ $status }}</option>@endforeach</select></div></div><div><label>Материалы</label><select multiple name="asset_ids[]" class="min-h-52">@foreach($assets as $asset)<option value="{{ $asset->id }}">{{ $asset->title }} · {{ $asset->status }}</option>@endforeach</select><p class="mt-1 text-xs text-slate-400">Рабочий статус материала не публикует его сам по себе.</p></div><input type="hidden" name="sort_order" value="0"><button class="btn-primary w-full">Создать черновик</button></form></aside></section>
+<section x-show="tab==='materials'" class="mt-5">
+    <div class="mb-5 rounded-2xl border border-amber-400/50 bg-amber-50 p-4 text-sm leading-6 text-slate-700">
+        <b>Где появляются публикации:</b> на главной странице сразу под полноэкранной афишей, в разделе «Опубликованные материалы».
+        <a href="{{ route('public.home') }}#materials" target="_blank" class="ml-1 font-semibold text-amber-700">Открыть этот раздел</a>
+    </div>
+    <div class="grid gap-6 xl:grid-cols-[1.2fr_.8fr]">
+        <div class="space-y-4">
+            @forelse($publications as $publication)
+                @php($visible = $publication->is_published && $publication->status === 'Опубликовано' && !$publication->unpublished_at && (!$publication->published_at || $publication->published_at->isPast()))
+                <article class="card" x-data="{edit:false}">
+                    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                            <span class="badge {{ $visible ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600' }}">{{ $visible ? 'На сайте' : 'Не показывается' }}</span>
+                            <h2 class="mt-2">{{ $publication->title }}</h2>
+                            <p class="mt-2 text-sm text-slate-600">{{ $publication->description }}</p>
+                            <p class="mt-2 text-xs {{ $publication->assets->isEmpty() ? 'font-semibold text-red-600' : 'text-slate-400' }}">Материалов: {{ $publication->assets->count() }} · {{ $publication->author?->name }}</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <form method="POST" action="{{ route('publications.visibility', $publication) }}">@csrf<input type="hidden" name="visible" value="{{ $visible ? 0 : 1 }}"><button class="{{ $visible ? 'btn-secondary' : 'btn-primary' }}">{{ $visible ? 'Скрыть с сайта' : 'Показать на сайте' }}</button></form>
+                            <button type="button" @click="edit=!edit" class="btn-secondary">Изменить</button>
+                        </div>
+                    </div>
+                    <form x-show="edit" x-cloak method="POST" action="{{ route('publications.update',$publication) }}" class="mt-4 space-y-4 rounded-xl bg-mist-50 p-4">
+                        @csrf @method('PUT')
+                        <div><label>Заголовок</label><input name="title" value="{{ $publication->title }}" required></div>
+                        <div><label>Описание</label><textarea name="description">{{ $publication->description }}</textarea></div>
+                        <div class="field-grid"><div><label>Тип</label><input name="type" value="{{ $publication->type }}" required></div><div><label>Порядок</label><input type="number" min="0" name="sort_order" value="{{ $publication->sort_order }}"></div></div>
+                        <input type="hidden" name="status" value="{{ $publication->status }}">
+                        <input type="hidden" name="published_at" value="{{ $publication->published_at?->format('Y-m-d\TH:i') }}">
+                        <div><label>Прикреплённые материалы</label><div class="grid gap-2 sm:grid-cols-2">@foreach($assets as $asset)<label class="flex cursor-pointer gap-3 rounded-xl border border-mist-200 bg-white p-3"><input class="mt-0.5 h-4 w-4 shrink-0" type="checkbox" name="asset_ids[]" value="{{ $asset->id }}" @checked($publication->assets->contains($asset))><span><b class="block text-sm">{{ $asset->title }}</b><span class="text-xs text-slate-500">{{ $asset->type }} · {{ $asset->status }}</span></span></label>@endforeach</div></div>
+                        <button class="btn-primary">Сохранить изменения</button>
+                    </form>
+                </article>
+            @empty
+                <div class="card muted">Публикаций пока нет.</div>
+            @endforelse
+        </div>
+        <aside class="card self-start xl:sticky xl:top-7">
+            <h2>Новая публикация</h2>
+            <form method="POST" action="{{ route('publications.store') }}" class="mt-4 space-y-4">
+                @csrf
+                <div><label>Заголовок</label><input name="title" required></div>
+                <div><label>Описание</label><textarea name="description"></textarea></div>
+                <div><label>Тип</label><select name="type"><option>Фото</option><option>Видео</option><option>Новость</option><option>Афиша</option></select></div>
+                <div><label>Материалы</label><div class="max-h-72 space-y-2 overflow-y-auto">@forelse($assets as $asset)<label class="flex cursor-pointer gap-3 rounded-xl border border-mist-200 p-3"><input class="mt-0.5 h-4 w-4 shrink-0" type="checkbox" name="asset_ids[]" value="{{ $asset->id }}"><span><b class="block text-sm">{{ $asset->title }}</b><span class="text-xs text-slate-500">{{ $asset->type }} · {{ $asset->status }}</span></span></label>@empty<p class="rounded-xl bg-mist-50 p-3 text-sm text-slate-500">Сначала загрузите материал в медиатеку.</p>@endforelse</div></div>
+                <input type="hidden" name="sort_order" value="0">
+                <div class="grid gap-2"><button name="publish_action" value="publish" class="btn-primary w-full">Создать и опубликовать</button><button name="publish_action" value="draft" class="btn-secondary w-full">Сохранить как черновик</button></div>
+            </form>
+        </aside>
+    </div>
+</section>
 <section x-show="tab==='site'" class="mt-5 grid max-w-6xl gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
     <div class="card">
         <h2>Оформление главной</h2>

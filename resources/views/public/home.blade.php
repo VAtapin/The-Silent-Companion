@@ -34,7 +34,7 @@
     </section>
 
     @if($publications->isNotEmpty())
-        <section class="bg-mist-50 py-20 text-ink-900">
+        <section id="materials" class="bg-mist-50 py-20 text-ink-900">
             <div class="mx-auto max-w-7xl px-5">
                 <p class="text-xs uppercase tracking-[.28em] text-amber-500">Из дневника фильма</p>
                 <h2 class="mt-3 text-3xl md:text-4xl">Опубликованные материалы</h2>

@@ -351,6 +351,42 @@ class FilmProductionTest extends TestCase
             ->assertDontSee('aspect-[2/3]', false);
     }
 
+    public function test_publication_can_be_created_and_shown_on_home_with_one_action(): void
+    {
+        Storage::fake('local');
+        [$user] = $this->baseData();
+        Storage::disk('local')->put('teaser.jpg', 'image');
+        $asset = Asset::create(['uploaded_by' => $user->id, 'title' => 'Тизер', 'type' => 'Фото', 'status' => 'Утверждено', 'disk' => 'local', 'file_path' => 'teaser.jpg', 'original_name' => 'teaser.jpg', 'mime_type' => 'image/jpeg']);
+
+        $this->actingAs($user)->post(route('publications.store'), [
+            'title' => 'Первый тизер',
+            'description' => 'Материал со съёмок',
+            'type' => 'Фото',
+            'asset_ids' => [$asset->id],
+            'publish_action' => 'publish',
+            'sort_order' => 0,
+        ])->assertRedirect();
+
+        $publication = Publication::firstOrFail();
+        $this->assertTrue($publication->is_published);
+        $this->assertSame('Опубликовано', $publication->status);
+        $this->assertTrue($publication->assets->contains($asset));
+        $this->get(route('public.home'))->assertOk()->assertSee('Первый тизер')->assertSee('Материал со съёмок');
+    }
+
+    public function test_visibility_button_repairs_inconsistent_publication_state(): void
+    {
+        [$user] = $this->baseData();
+        $publication = Publication::create(['author_id' => $user->id, 'title' => 'Тизер', 'type' => 'Видео', 'status' => 'Опубликовано', 'is_published' => false]);
+
+        $this->actingAs($user)->post(route('publications.visibility', $publication), ['visible' => 1])->assertRedirect();
+
+        $publication->refresh();
+        $this->assertTrue($publication->is_published);
+        $this->assertSame('Опубликовано', $publication->status);
+        $this->assertNull($publication->unpublished_at);
+    }
+
     public function test_public_home_does_not_disclose_internal_project_data(): void
     {
         [$user,$project] = $this->baseData();
