@@ -262,8 +262,9 @@ class FilmProductionTest extends TestCase
         [$user] = $this->baseData();
 
         $this->actingAs($user)->get(route('help.index'))->assertOk()
-            ->assertSee('Как устроена рабочая зона')
-            ->assertSee('A2-S06-K03')
+            ->assertSee('Помощь по рабочей зоне')
+            ->assertSee('60 коротких инструкций')
+            ->assertSee('Как читать коды A1-S03-K07')
             ->assertSee('ИИ-помощник');
         $this->get(route('dashboard'))->assertOk()
             ->assertSee('Открыть помощь')
@@ -660,6 +661,20 @@ class FilmProductionTest extends TestCase
         $this->assertSame('assets/original.jpg', $asset->file_path);
         $this->assertTrue($asset->characters->contains($character));
         $this->assertTrue($asset->checklistItems->contains($item));
+    }
+
+    public function test_uploaded_mov_has_inline_video_player_and_protected_preview(): void
+    {
+        Storage::fake('local');
+        [$user] = $this->baseData();
+        Storage::disk('local')->put('assets/iphone.mov', 'fake-video');
+        $asset = Asset::create(['uploaded_by' => $user->id, 'title' => 'Видео с iPhone', 'type' => 'Видео', 'status' => 'На проверке', 'disk' => 'local', 'file_path' => 'assets/iphone.mov', 'original_name' => 'iphone.mov', 'mime_type' => 'video/quicktime']);
+
+        $this->actingAs($user)->get(route('assets.show', $asset))->assertOk()
+            ->assertSee('<video controls playsinline', false)
+            ->assertSee(route('assets.preview', $asset), false)
+            ->assertSee('Если MOV с iPhone не открывается');
+        $this->get(route('assets.preview', $asset))->assertOk()->assertHeader('content-type', 'video/quicktime');
     }
 
     public function test_rejected_or_reshoot_material_requires_clear_comment_and_notifies_uploader(): void

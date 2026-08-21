@@ -141,9 +141,17 @@ class AssetController extends Controller
         return Storage::disk($asset->disk)->download($path, $thumbnail ? 'preview.jpg' : $asset->original_name);
     }
 
-    public function preview(Asset $asset): StreamedResponse
+    public function preview(Asset $asset): StreamedResponse|BinaryFileResponse
     {
         abort_unless($asset->file_path && Storage::disk($asset->disk)->exists($asset->file_path), 404);
+
+        if ($asset->disk === 'local') {
+            return response()->file(Storage::disk($asset->disk)->path($asset->file_path), [
+                'Content-Type' => $asset->mime_type ?: 'application/octet-stream',
+                'Content-Disposition' => 'inline',
+                'Cache-Control' => 'private, no-store',
+            ]);
+        }
 
         return Storage::disk($asset->disk)->response($asset->file_path, $asset->original_name, ['Cache-Control' => 'private, no-store']);
     }
