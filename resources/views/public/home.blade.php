@@ -1,9 +1,49 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+    @php
+        $seoTitle = ($project?->title_ru ?? 'Тихий спутник').' — фильм';
+        $seoDescription = \Illuminate\Support\Str::limit(trim($settings?->public_summary ?: ($project?->logline ?: 'Официальная страница короткометражного фильма «Тихий спутник».')), 200, '');
+        $canonicalUrl = route('public.home');
+        $seoImage = $settings?->poster ? route('public.media', ['asset' => $settings->poster, 'v' => $settings->poster->updated_at?->timestamp]) : null;
+        $movieSchema = array_filter([
+            '@context' => 'https://schema.org',
+            '@type' => 'Movie',
+            'name' => $project?->title_ru ?? 'Тихий спутник',
+            'alternateName' => $project?->title_en,
+            'description' => $seoDescription,
+            'image' => $seoImage,
+            'url' => $canonicalUrl,
+            'inLanguage' => $project?->language ?? 'ru',
+            'genre' => $project?->genre,
+        ], fn ($value) => filled($value));
+    @endphp
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>{{ $project?->title_ru ?? 'Тихий спутник' }} — фильм</title>
+    <title>{{ $seoTitle }}</title>
+    <meta name="description" content="{{ $seoDescription }}">
+    <meta name="robots" content="index, follow, max-image-preview:large">
+    <meta name="theme-color" content="#111716">
+    <link rel="canonical" href="{{ $canonicalUrl }}">
+
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:site_name" content="Тихий спутник">
+    <meta property="og:url" content="{{ $canonicalUrl }}">
+    <meta property="og:title" content="{{ $seoTitle }}">
+    <meta property="og:description" content="{{ $seoDescription }}">
+    @if($seoImage)
+        <meta property="og:image" content="{{ $seoImage }}">
+        <meta property="og:image:secure_url" content="{{ $seoImage }}">
+        <meta property="og:image:type" content="{{ $settings->poster->mime_type ?: 'image/jpeg' }}">
+        <meta property="og:image:alt" content="Афиша фильма «{{ $project?->title_ru ?? 'Тихий спутник' }}»">
+    @endif
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ $seoTitle }}">
+    <meta name="twitter:description" content="{{ $seoDescription }}">
+    @if($seoImage)<meta name="twitter:image" content="{{ $seoImage }}">@endif
+    <script type="application/ld+json">{!! json_encode($movieSchema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}</script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-ink-950 text-mist-50">

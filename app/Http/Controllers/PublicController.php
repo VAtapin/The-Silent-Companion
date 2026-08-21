@@ -7,6 +7,7 @@ use App\Models\DonationSetting;
 use App\Models\Project;
 use App\Models\Publication;
 use App\Models\PublicSiteSetting;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -17,7 +18,12 @@ class PublicController extends Controller
     {
         $project = Project::first();
 
-        return view('public.home', ['project' => $project, 'settings' => PublicSiteSetting::first(), 'donations' => DonationSetting::where('is_visible', true)->first(), 'publications' => Publication::visible()->with('assets')->orderBy('sort_order')->orderByDesc('published_at')->get()]);
+        return view('public.home', ['project' => $project, 'settings' => PublicSiteSetting::with('poster')->first(), 'donations' => DonationSetting::where('is_visible', true)->first(), 'publications' => Publication::visible()->with('assets')->orderBy('sort_order')->orderByDesc('published_at')->get()]);
+    }
+
+    public function sitemap(): Response
+    {
+        return response()->view('public.sitemap')->header('Content-Type', 'application/xml; charset=UTF-8');
     }
 
     public function media(Asset $asset): StreamedResponse

@@ -1,2 +1,4 @@
 User-agent: *
 Disallow:
+
+Sitemap: https://the-silent-companion.com/sitemap.xml

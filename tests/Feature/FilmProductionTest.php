@@ -344,11 +344,17 @@ class FilmProductionTest extends TestCase
         $poster = Asset::create(['uploaded_by' => $user->id, 'title' => 'Широкая афиша', 'type' => 'Фото', 'status' => 'Утверждено', 'disk' => 'local', 'file_path' => 'poster.jpg', 'original_name' => 'poster.jpg', 'mime_type' => 'image/jpeg']);
         PublicSiteSetting::create(['project_id' => $project->id, 'poster_asset_id' => $poster->id]);
 
-        $this->get(route('public.home'))
+        $response = $this->get(route('public.home'))
             ->assertOk()
             ->assertSee('min-h-screen', false)
             ->assertSee('object-[68%_center]', false)
-            ->assertDontSee('aspect-[2/3]', false);
+            ->assertDontSee('aspect-[2/3]', false)
+            ->assertSee('property="og:image"', false)
+            ->assertSee('name="twitter:card" content="summary_large_image"', false)
+            ->assertSee(route('public.media', $poster), false);
+
+        $response->assertSee('application/ld+json', false)->assertSee('https://schema.org', false);
+        $this->get(route('public.sitemap'))->assertOk()->assertHeader('Content-Type', 'application/xml; charset=UTF-8')->assertSee('<urlset', false);
     }
 
     public function test_publication_can_be_created_and_shown_on_home_with_one_action(): void
